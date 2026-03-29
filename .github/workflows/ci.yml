@@ -48,8 +48,6 @@ jobs:
       - name: Run tests
         run: |
           git diff --cached --exit-code
-          go test -race -cover -v ./... -coverprofile=cover.out -covermode=atomic
-      - name: Upload coverage
-        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 #v6.0.0^{}
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          go test -race -cover -v ./... -coverprofile=coverage.out -covermode=atomic
+      - name: Run octocov
+        uses: k1LoW/octocov-action@73d561f65d59e66899ed5c87e4621a913b5d5c20 # v1.5.0

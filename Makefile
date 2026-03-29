@@ -47,7 +47,7 @@ endif
 
 clean:
 	go clean
-	rm -f $(NAME) cover.out cover.html cpu.prof mem.prof $(NAME).test
+	rm -f $(NAME) coverage.out coverage.html cpu.prof mem.prof $(NAME).test
 
 build: clean
 	go mod tidy
@@ -60,10 +60,10 @@ build: clean
 check: test cover bench lint vuln
 
 test:
-	go test -race -cover -v -coverprofile=cover.out -covermode=atomic ./...
+	go test -race -cover -v -coverprofile=coverage.out -covermode=atomic ./...
 
 cover:
-	go tool cover -html=cover.out -o cover.html
+	go tool cover -html=coverage.out -o coverage.html
 
 bench:
 	go test -bench . -benchmem -count 5 -benchtime=10000x -cpuprofile=cpu.prof -memprofile=mem.prof
