@@ -1,0 +1,5 @@
+[user]
+	name = localuser
+[remote "origin"]
+	url = https://example.com/localuser/repo.git
+	fetch = +refs/heads/*:refs/remotes/origin/*

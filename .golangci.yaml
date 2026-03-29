@@ -1,0 +1,26 @@
+version: "2"
+linters:
+  default: fast
+  enable:
+    - errcheck
+    - gosec
+    - revive
+  disable:
+    - cyclop
+    - depguard
+    - funlen
+    - gocognit
+    - lll
+    - maintidx
+    - mnd
+    - nlreturn
+    - testpackage
+    - wsl
+  exclusions:
+    rules:
+      - linters:
+          - dupl
+        path: '(.+)_test\.go'
+      - linters:
+          - revive
+        text: "package-comments"

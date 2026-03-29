@@ -1,0 +1,800 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"log/slog"
+	"os"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/nekrassov01/ignoresync"
+	"github.com/nekrassov01/ignoresync/color"
+	"github.com/nekrassov01/ignoresync/config"
+	"github.com/nekrassov01/ignoresync/env"
+	"github.com/nekrassov01/ignoresync/health"
+	"github.com/nekrassov01/ignoresync/manager"
+	"github.com/nekrassov01/ignoresync/operator"
+	"github.com/nekrassov01/ignoresync/prompt"
+	"github.com/nekrassov01/logger/integrations/awssdk"
+	"github.com/nekrassov01/logger/log"
+	"github.com/urfave/cli/v3"
+)
+
+// logger is a global logger instance used across the application.
+var logger = log.NewLogger(log.NewCLIHandler(io.Discard))
+
+var (
+	// loglevel is the flag for log level.
+	loglevel = &cli.StringFlag{
+		Name:    "log-level",
+		Aliases: []string{"l"},
+		Usage:   "set log level",
+		Sources: cli.EnvVars(ignoresync.EnvLogLevel),
+		Value:   slog.LevelInfo.String(),
+	}
+
+	// profile is the flag for AWS profile.
+	profile = &cli.StringFlag{
+		Name:    "profile",
+		Aliases: []string{"p"},
+		Usage:   "set aws profile",
+		Sources: cli.EnvVars(ignoresync.EnvAWSProfile),
+	}
+
+	// region is the flag for AWS region.
+	region = &cli.StringFlag{
+		Name:    "region",
+		Aliases: []string{"r"},
+		Usage:   "set aws region",
+		Sources: cli.EnvVars(ignoresync.EnvAWSRegion),
+	}
+
+	// remote is the flag for git remote name.
+	remote = &cli.StringFlag{
+		Name:    "remote",
+		Aliases: []string{"R"},
+		Usage:   "set git remote name",
+		Sources: cli.EnvVars(ignoresync.EnvRemoteName),
+		Value:   ignoresync.DefaultRemoteName,
+	}
+
+	// dryrun is the flag for dry run mode.
+	dryrun = &cli.BoolFlag{
+		Name:    "dry-run",
+		Aliases: []string{"d"},
+		Usage:   "run without processing files",
+	}
+
+	// overwrite is the flag for overwrite mode.
+	overwrite = &cli.BoolFlag{
+		Name:    "overwrite",
+		Aliases: []string{"o"},
+		Usage:   "force overwrite without confirmation",
+	}
+)
+
+// newCmd creates a new CLI command.
+func newCmd(w, ew io.Writer) *cli.Command {
+	return &cli.Command{
+		Name:                  ignoresync.CommandName,
+		Version:               getVersion(),
+		Usage:                 "Your shadow repository for ignored files.",
+		Description:           "Sync files ignored in the repository across machines without configuration.",
+		HideHelpCommand:       true,
+		EnableShellCompletion: true,
+		Writer:                w,
+		ErrWriter:             ew,
+		Metadata:              map[string]any{},
+		Commands: []*cli.Command{
+			{
+				Name:        "bootstrap",
+				Usage:       "Bootstrap the environment.",
+				Description: "Build the AWS resources as environment and activate the local machine at the same.\nThis process creates an S3 bucket and a KMS key in your AWS account, generates an\ncredential tied to your account and region combination, and stores the state derived\nfrom that key in the local keystore.",
+				Category:    categoryGlobal,
+				Before:      before,
+				Action:      bootstrap,
+				Flags:       []cli.Flag{loglevel, profile, region},
+			},
+			{
+				Name:        "check",
+				Usage:       "Check the environment.",
+				Description: "Check if the environment is accessible. If this check is not passed,\nthe environment is not available.",
+				Category:    categoryGlobal,
+				Before:      before,
+				Action:      check,
+				Flags:       []cli.Flag{loglevel, profile},
+			},
+			{
+				Name:        "activate",
+				Usage:       "Activate the local machine.",
+				Description: "Activate the local machine using the specified credential.\nPass a known ID to be stored in the local keystore.",
+				Category:    categoryLocal,
+				Before:      before,
+				Action:      activate,
+				Flags:       []cli.Flag{loglevel, profile, region},
+			},
+			{
+				Name:        "deactivate",
+				Usage:       "Deactivate the local machine.",
+				Description: "Deactivate the specified credential for the local machine.\nDelete known ID stored in the local keystore.",
+				Category:    categoryLocal,
+				Before:      before,
+				Action:      deactivate,
+				Flags:       []cli.Flag{loglevel, profile, region},
+			},
+			{
+				Name:        "list",
+				Usage:       "List the key IDs.",
+				Description: "List the key IDs from credentials stored in the local keystore.\nYou can also check whether they are active or not.",
+				Category:    categoryLocal,
+				Before:      before,
+				Action:      list,
+				Flags:       []cli.Flag{loglevel, profile, region},
+			},
+			{
+				Name:        "rotate",
+				Usage:       "Rotate the credential.",
+				Description: "Rotate the credential in the local keystore. This process\ngenerates a new credential and updates the state accordingly.",
+				Category:    categoryLocal,
+				Before:      before,
+				Action:      rotate,
+				Flags:       []cli.Flag{loglevel, profile, region},
+			},
+			{
+				Name:        "leave",
+				Usage:       "Leave the environment.",
+				Description: "Leave the environment by deleting the state. This process\nremoves all the credentials from the local keystore.",
+				Category:    categoryLocal,
+				Before:      before,
+				Action:      leave,
+				Flags:       []cli.Flag{loglevel, profile, region},
+			},
+			{
+				Name:        "push",
+				Usage:       "Push the local files.",
+				Description: "Push the local files to the environment. Bundle the local files into a tar.gz,\nmultiple encrypted on the client side, and uploaded to the environment.",
+				Category:    categoryRepository,
+				Before:      before,
+				Action:      push,
+				Flags:       []cli.Flag{loglevel, profile, remote, dryrun},
+			},
+			{
+				Name:        "pull",
+				Usage:       "Pull the remote files.",
+				Description: "Pull the remote files from the environment. The files are decrypted and extracted\nfrom tar.gz to the current directory. If there are differences in the same file,\nit will prompt you to confirm whether to overwrite it.",
+				Category:    categoryRepository,
+				Before:      before,
+				Action:      pull,
+				Flags:       []cli.Flag{loglevel, profile, remote, overwrite},
+			},
+			{
+				Name:        "rm",
+				Usage:       "Remove the remote files/patterns.",
+				Description: "Remove the remote files/patterns uploaded to the environment.\nIf the key cannot be retrieved, the deletion will fail.",
+				Category:    categoryRepository,
+				Before:      before,
+				Action:      rm,
+				Flags:       []cli.Flag{loglevel, profile, remote},
+			},
+			{
+				Name:        "set",
+				Usage:       "Set the remote patterns.",
+				Description: "Set the remote patterns uploaded to the environment.\nJSON array format is required.",
+				Category:    categoryRepository,
+				Before:      before,
+				Action:      set,
+				Flags:       []cli.Flag{loglevel, profile, remote},
+			},
+			{
+				Name:        "preview",
+				Usage:       "Preview the remote files/patterns.",
+				Description: "Preview the remote files/patterns uploaded to the environment.\nThis command does not make any changes to the local files and\nis intended to be used for checking the remote state.",
+				Category:    categoryRepository,
+				Before:      before,
+				Action:      preview,
+				Flags:       []cli.Flag{loglevel, profile, remote},
+			},
+			{
+				Name:        "rewrap",
+				Usage:       "Rewrap the remote files/patterns.",
+				Description: "Rewrap the remote files/patterns uploaded to the environment.\nRe-encrypt the existing files/patterns using the new key.",
+				Category:    categoryRepository,
+				Before:      before,
+				Action:      rewrap,
+				Flags:       []cli.Flag{loglevel, profile, remote},
+			},
+		},
+	}
+}
+
+func before(ctx context.Context, cmd *cli.Command) (context.Context, error) {
+	// Parse log level
+	var level slog.Level
+	if err := level.UnmarshalText([]byte(cmd.String(loglevel.Name))); err != nil {
+		level = slog.LevelInfo
+	}
+
+	// Set logger style
+	s := log.Style1()
+	s.Caller.Fullpath = true
+
+	// Create logger for application
+	logger = log.NewLogger(log.NewCLIHandler(
+		cmd.ErrWriter,
+		log.WithLabel(ignoresync.LogLabel),
+		log.WithLevel(level),
+		log.WithCaller(level <= slog.LevelDebug),
+		log.WithStyle(s),
+	))
+
+	// Load AWS config with the specified profile and region
+	cfg, err := config.LoadAWSConfig(ctx, cmd.String(region.Name), cmd.String(profile.Name))
+	if err != nil {
+		return nil, err
+	}
+
+	// Create logger for AWS SDK
+	cfg.Logger = awssdk.NewLogger(log.NewCLIHandler(
+		cmd.ErrWriter,
+		log.WithLabel("SDK"),
+		log.WithLevel(level),
+		log.WithCaller(level <= slog.LevelDebug),
+		log.WithStyle(s),
+	))
+	cfg.ClientLogMode = aws.LogRequest | aws.LogResponse | aws.LogRetries | aws.LogSigning | aws.LogDeprecatedUsage
+
+	// Warn if running in CI mode
+	cred := os.Getenv(ignoresync.EnvCredential)
+	if cred != "" {
+		msg := fmt.Sprintf("ci mode: environment variable %q is set: this is not recommended except for CI use", ignoresync.EnvCredential)
+		logger.Warn(msg)
+	}
+
+	// Set metadata for commands
+	cmd.Metadata[keyConf] = cfg
+	cmd.Metadata[keyCred] = cred
+
+	return ctx, nil
+}
+
+func bootstrap(ctx context.Context, cmd *cli.Command) error {
+	// Check if running in CI mode
+	if cmd.Metadata[keyCred].(string) != "" {
+		logger.Warn("ci mode: skip bootstrapping")
+		return nil
+	}
+
+	// Load AWS config
+	cfg := cmd.Metadata[keyConf].(aws.Config)
+
+	// Create manager
+	man, err := manager.New(ctx, cmd.Writer, cfg)
+	if err != nil {
+		return err
+	}
+
+	// Prompt for overwrite
+	msg := fmt.Sprintf("confirm your profile: account=%s region=%s: ok?", man.Account, man.Region)
+	if _, err := prompt.Confirm(cmd.Writer, msg, "canceled"); err != nil {
+		_, _ = fmt.Fprintln(cmd.Writer, color.Warn(err.Error()))
+		return nil
+	}
+
+	// Generate credential
+	id, key, err := manager.GenerateCredential()
+	if err != nil {
+		return err
+	}
+
+	// Derive data from credential
+	state, err := man.GenerateState(id, key)
+	if err != nil {
+		return err
+	}
+
+	// Create deployer
+	d := env.New(cmd.Writer, cfg)
+
+	// Deploy environment
+	if err := d.Deploy(ctx, state); err != nil {
+		return err
+	}
+
+	// Store state in the keyring
+	if err := man.StoreState(state); err != nil {
+		return err
+	}
+
+	// Expose credential
+	pref := color.Important(" IMPORTANT ")
+	cred := color.Underline(manager.EncodeCredential(id, key))
+	_, _ = fmt.Fprintf(cmd.Writer, "%s store your credential securely: %s\n", pref, cred)
+
+	return nil
+}
+
+func check(ctx context.Context, cmd *cli.Command) error {
+	// Load AWS config
+	cfg := cmd.Metadata[keyConf].(aws.Config)
+
+	// Create manager
+	man, err := manager.New(ctx, cmd.Writer, cfg)
+	if err != nil {
+		return err
+	}
+
+	// Load stored state
+	state, err := man.EnsureState(cmd.Metadata[keyCred].(string))
+	if err != nil {
+		return err
+	}
+
+	// Check environment
+	c := health.New(cmd.Writer, cfg)
+	if err := c.Check(ctx, state); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func activate(ctx context.Context, cmd *cli.Command) error {
+	// Check if running in CI mode
+	if cmd.Metadata[keyCred].(string) != "" {
+		logger.Warn("ci mode: skip activation")
+		return nil
+	}
+
+	// Load AWS config
+	cfg := cmd.Metadata[keyConf].(aws.Config)
+
+	// Get credential from user input
+	cred, err := prompt.Secret(cmd.Writer, "enter your credential:", manager.ValidateCredential)
+	if err != nil {
+		return err
+	}
+
+	// Decode credential
+	id, key, err := manager.DecodeCredential(cred)
+	if err != nil {
+		return err
+	}
+
+	// Create manager
+	man, err := manager.New(ctx, cmd.Writer, cfg)
+	if err != nil {
+		return err
+	}
+
+	// Add new credential to state if state already exists
+	exist, err := man.CheckStateExist()
+	if err != nil {
+		return err
+	}
+	if exist {
+		return man.AddCredential(id, key)
+	}
+
+	// Generate state from credential
+	state, err := man.GenerateState(id, key)
+	if err != nil {
+		return err
+	}
+
+	// Create deployer
+	d := env.New(cmd.Writer, cfg)
+
+	// Check if environment exists
+	deployed, err := d.CheckDeployed(ctx, state)
+	if err != nil {
+		return err
+	}
+	if !deployed {
+		err := errors.New("environment does not exist in your current profile: verify account/region is correct and bootstrapping is complete")
+		return env.NewEnvError(err)
+	}
+
+	// Store state in the keyring
+	if err := man.StoreState(state); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func deactivate(ctx context.Context, cmd *cli.Command) error {
+	// Check if running in CI mode
+	if cmd.Metadata[keyCred].(string) != "" {
+		logger.Warn("ci mode: skip deactivation")
+		return nil
+	}
+
+	// Load AWS config
+	cfg := cmd.Metadata[keyConf].(aws.Config)
+
+	// Get credential from user input
+	cred, err := prompt.Secret(cmd.Writer, "enter your credential:", manager.ValidateCredential)
+	if err != nil {
+		return err
+	}
+
+	// Decode credential
+	id, key, err := manager.DecodeCredential(cred)
+	if err != nil {
+		return err
+	}
+
+	// Create manager
+	man, err := manager.New(ctx, cmd.Writer, cfg)
+	if err != nil {
+		return err
+	}
+
+	// Update state by removing credential
+	if err := man.RemoveCredential(id, key); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func list(ctx context.Context, cmd *cli.Command) error {
+	// Check if running in CI mode
+	if cmd.Metadata[keyCred].(string) != "" {
+		logger.Warn("ci mode: skip getting key IDs")
+		return nil
+	}
+
+	// Load AWS config
+	cfg := cmd.Metadata[keyConf].(aws.Config)
+
+	// Create manager
+	man, err := manager.New(ctx, cmd.Writer, cfg)
+	if err != nil {
+		return err
+	}
+
+	// List credentials
+	keys, err := man.ListCredentials()
+	if err != nil {
+		return err
+	}
+
+	// Display key list as JSON
+	v, err := json.MarshalIndent(keys, "", "  ")
+	if err != nil {
+		return err
+	}
+	_, _ = fmt.Fprintln(cmd.Writer, string(v))
+
+	return nil
+}
+
+func rotate(ctx context.Context, cmd *cli.Command) error {
+	// Check if running in CI mode
+	if cmd.Metadata[keyCred].(string) != "" {
+		logger.Warn("ci mode: skip rotation")
+		return nil
+	}
+
+	// Load AWS config
+	cfg := cmd.Metadata[keyConf].(aws.Config)
+
+	// Create manager
+	man, err := manager.New(ctx, cmd.Writer, cfg)
+	if err != nil {
+		return err
+	}
+
+	// Generate credential
+	id, key, err := manager.GenerateCredential()
+	if err != nil {
+		return err
+	}
+
+	// Add new credential to state
+	if err := man.AddCredential(id, key); err != nil {
+		return err
+	}
+
+	// Expose credential
+	pref := color.Important(" IMPORTANT ")
+	cred := color.Underline(manager.EncodeCredential(id, key))
+	warn := color.Warn("rotate successfully, but the object is still encrypted with the old key: rewrap required")
+	_, _ = fmt.Fprintf(cmd.Writer, "%s store your credential securely: %s\n", pref, cred)
+	_, _ = fmt.Fprintln(cmd.Writer, warn)
+
+	return nil
+}
+
+func leave(ctx context.Context, cmd *cli.Command) error {
+	// Check if running in CI mode
+	if cmd.Metadata[keyCred].(string) != "" {
+		logger.Warn("ci mode: skip leaving environment")
+		return nil
+	}
+
+	// Load AWS config
+	cfg := cmd.Metadata[keyConf].(aws.Config)
+
+	// Create manager
+	man, err := manager.New(ctx, cmd.Writer, cfg)
+	if err != nil {
+		return err
+	}
+
+	// Delete state from the keyring
+	if err := man.DeleteState(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func push(ctx context.Context, cmd *cli.Command) error {
+	// Load AWS config
+	cfg := cmd.Metadata[keyConf].(aws.Config)
+
+	// Create manager
+	man, err := manager.New(ctx, cmd.Writer, cfg)
+	if err != nil {
+		return err
+	}
+
+	// Load stored state
+	state, err := man.EnsureState(cmd.Metadata[keyCred].(string))
+	if err != nil {
+		return err
+	}
+
+	// Get current working directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	// Create operator
+	o, err := operator.New(cmd.Writer, cwd, cmd.String(remote.Name), cfg)
+	if err != nil {
+		return err
+	}
+
+	// Pull target patterns from S3
+	if _, err := o.PullPatterns(ctx, state); err != nil {
+		return err
+	}
+
+	// Set dry run mode if specified
+	if cmd.Bool(dryrun.Name) {
+		o.SetDryrun(true)
+	}
+
+	// Push target files to S3
+	if err := o.PushFiles(ctx, state); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func pull(ctx context.Context, cmd *cli.Command) error {
+	// Load AWS config
+	cfg := cmd.Metadata[keyConf].(aws.Config)
+
+	// Create manager
+	man, err := manager.New(ctx, cmd.Writer, cfg)
+	if err != nil {
+		return err
+	}
+
+	// Load stored state
+	state, err := man.EnsureState(cmd.Metadata[keyCred].(string))
+	if err != nil {
+		return err
+	}
+
+	// Get current working directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	// Create operator
+	o, err := operator.New(cmd.Writer, cwd, cmd.String(remote.Name), cfg)
+	if err != nil {
+		return err
+	}
+
+	// Set dryrun if specified
+	if cmd.Bool(dryrun.Name) {
+		o.SetDryrun(true)
+	}
+
+	// Set overwrite when in CI mode or specified
+	if shouldOverwrite(cmd) {
+		o.SetOverwrite(true)
+	}
+
+	// Pull target files from S3
+	if err := o.PullFiles(ctx, state); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func rm(ctx context.Context, cmd *cli.Command) error {
+	// Load AWS config
+	cfg := cmd.Metadata[keyConf].(aws.Config)
+
+	// Create manager
+	man, err := manager.New(ctx, cmd.Writer, cfg)
+	if err != nil {
+		return err
+	}
+
+	// Load stored state
+	state, err := man.EnsureState(cmd.Metadata[keyCred].(string))
+	if err != nil {
+		return err
+	}
+
+	// Get current working directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	// Create operator
+	o, err := operator.New(cmd.Writer, cwd, cmd.String(remote.Name), cfg)
+	if err != nil {
+		return err
+	}
+
+	// Delete remote files, patterns, and keys from S3
+	if err := o.Delete(ctx, state); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func set(ctx context.Context, cmd *cli.Command) error {
+	// Load AWS config
+	cfg := cmd.Metadata[keyConf].(aws.Config)
+
+	// Create manager
+	man, err := manager.New(ctx, cmd.Writer, cfg)
+	if err != nil {
+		return err
+	}
+
+	// Load stored state
+	state, err := man.EnsureState(cmd.Metadata[keyCred].(string))
+	if err != nil {
+		return err
+	}
+
+	// Get current working directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	// Create operator
+	o, err := operator.New(cmd.Writer, cwd, cmd.String(remote.Name), cfg)
+	if err != nil {
+		return err
+	}
+
+	// Parse target patterns
+	var target []string
+	if err := json.Unmarshal([]byte(cmd.Args().Get(0)), &target); err != nil {
+		return err
+	}
+
+	// Set target patterns
+	o.SetPatterns(target)
+
+	// Push target patterns to S3
+	if err := o.PushPatterns(ctx, state, target); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func preview(ctx context.Context, cmd *cli.Command) error {
+	// Load AWS config
+	cfg := cmd.Metadata[keyConf].(aws.Config)
+
+	// Create manager
+	man, err := manager.New(ctx, cmd.Writer, cfg)
+	if err != nil {
+		return err
+	}
+
+	// Load stored state
+	state, err := man.EnsureState(cmd.Metadata[keyCred].(string))
+	if err != nil {
+		return err
+	}
+
+	// Get current working directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	// Create operator
+	o, err := operator.New(cmd.Writer, cwd, cmd.String(remote.Name), cfg)
+	if err != nil {
+		return err
+	}
+
+	// Set dry run mode
+	o.SetDryrun(true)
+
+	// Preview target files
+	if _, err := o.PullPatterns(ctx, state); err != nil {
+		return err
+	}
+
+	// Preview target patterns
+	if err := o.PullFiles(ctx, state); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func rewrap(ctx context.Context, cmd *cli.Command) error {
+	// Load AWS config
+	cfg := cmd.Metadata[keyConf].(aws.Config)
+
+	// Create manager
+	man, err := manager.New(ctx, cmd.Writer, cfg)
+	if err != nil {
+		return err
+	}
+
+	// Load stored state
+	state, err := man.EnsureState(cmd.Metadata[keyCred].(string))
+	if err != nil {
+		return err
+	}
+
+	// Get current working directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	// Create operator
+	o, err := operator.New(cmd.Writer, cwd, cmd.String(remote.Name), cfg)
+	if err != nil {
+		return err
+	}
+
+	// Perform rewrap
+	if err := o.Rewrap(ctx, state); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// shouldOverwrite sets the overwrite mode based on the command flags and environment.
+func shouldOverwrite(cmd *cli.Command) bool {
+	if cmd.Bool(overwrite.Name) {
+		return true
+	}
+	if cred := cmd.Metadata[keyCred].(string); cred != "" {
+		logger.Warn("ci mode: force overwrite enabled")
+		return true
+	}
+	return false
+}
