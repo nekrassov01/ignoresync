@@ -1,11 +1,12 @@
 NAME := ignoresync
+PKG := github.com/nekrassov01/ignoresync
 
 CMD_PATH := ./cmd/$(NAME)/
 GOBIN ?= $(shell go env GOPATH)/bin
 
-VERSION := $$(make -s show-version)
-REVISION := $(shell git rev-parse --short HEAD)
-LDFLAGS := "-s -w -X main.version=$(VERSION) -X main.revision=$(REVISION)"
+VERSION := $$(make show-version)
+REVISION := $$(make show-revision)
+LDFLAGS := "-s -w -X $(PKG).version=$(VERSION) -X $(PKG).revision=$(REVISION)"
 
 HAS_LINT := $(shell command -v $(GOBIN)/golangci-lint 2> /dev/null)
 HAS_VULN := $(shell command -v $(GOBIN)/govulncheck 2> /dev/null)
@@ -78,7 +79,10 @@ vuln: deps-vuln
 # ----------
 
 show-version: deps-bump
-	gobump show -r $(CMD_PATH)
+	@echo $(shell gobump show -r)
+
+show-revision:
+	@echo $(shell git rev-parse --short HEAD)
 
 check-git:
 ifneq ($(shell git status --porcelain),)
@@ -89,7 +93,7 @@ ifneq ($(shell git rev-parse --abbrev-ref HEAD),main)
 endif
 
 publish: check-git deps-bump
-	gobump up -w $(CMD_PATH)
+	gobump up -w
 	git commit -am "bump up version to $(VERSION)"
 	git push origin main
 

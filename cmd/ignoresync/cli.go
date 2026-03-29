@@ -80,7 +80,7 @@ var (
 func newCmd(w, ew io.Writer) *cli.Command {
 	return &cli.Command{
 		Name:                  ignoresync.CommandName,
-		Version:               getVersion(),
+		Version:               ignoresync.Version(),
 		Usage:                 "Your shadow repository for ignored files.",
 		Description:           "Sync files ignored in the repository across machines without configuration.",
 		HideHelpCommand:       true,

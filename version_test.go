@@ -1,4 +1,4 @@
-package main
+package ignoresync
 
 import (
 	"fmt"
@@ -58,7 +58,7 @@ func Test_getVersion(t *testing.T) {
 					test.hook.after()
 				}
 			}()
-			got := getVersion()
+			got := Version()
 			testutil.CheckValue(t, got, test.want)
 		})
 	}

@@ -1,4 +1,4 @@
-package main
+package ignoresync
 
 import "fmt"
 
@@ -8,8 +8,8 @@ const version = "0.0.1"
 // revision is the git revision.
 var revision = ""
 
-// getVersion returns the version and revision.
-func getVersion() string {
+// Version returns the version and revision.
+func Version() string {
 	if revision == "" {
 		return version
 	}
