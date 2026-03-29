@@ -299,13 +299,21 @@ func newGCM(key []byte) (cipher.AEAD, error) {
 // s3 object prefix, baseNonce, scheme version and purpose.
 func buildAAD(prefix string, purpose string, baseNonce []byte) ([]byte, error) {
 	var buf bytes.Buffer
+	var err error
 
 	// Validate input lengths to prevent overflow
-	if n := len(prefix); n <= 0 || n > math.MaxUint32 {
+	// Avoid int overflow on 32bit
+	if n := len(prefix); n == 0 {
 		return nil, fmt.Errorf("invalid prefix length: %d", n)
 	}
-	if n := len(purpose); n <= 0 || n > math.MaxUint32 {
+	if uint64(len(prefix)) > math.MaxUint32 {
+		return nil, fmt.Errorf("prefix too long: %d", len(prefix))
+	}
+	if n := len(purpose); n == 0 {
 		return nil, fmt.Errorf("invalid purpose length: %d", n)
+	}
+	if uint64(len(purpose)) > math.MaxUint32 {
+		return nil, fmt.Errorf("purpose too long: %d", len(purpose))
 	}
 
 	// baseNonce may be omitted for some purposes.
@@ -313,20 +321,41 @@ func buildAAD(prefix string, purpose string, baseNonce []byte) ([]byte, error) {
 		return nil, fmt.Errorf("baseNonce is required for purpose: %s", purpose)
 	}
 
-	// #nosec G115 Write scheme version first (broadest scope)
-	_ = binary.Write(&buf, binary.BigEndian, uint32(schemeVersion))
+	// #nosec G115: Write scheme version first (broadest scope)
+	err = binary.Write(&buf, binary.BigEndian, uint32(schemeVersion))
+	if err != nil {
+		return nil, fmt.Errorf("failed to write scheme version: %w", err)
+	}
 
-	// #nosec G115 Write prefix length and prefix
-	_ = binary.Write(&buf, binary.BigEndian, uint32(len(prefix)))
-	buf.WriteString(prefix)
+	// #nosec G115: Write prefix length and prefix
+	err = binary.Write(&buf, binary.BigEndian, uint32(len(prefix)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to write prefix length: %w", err)
+	}
+	_, err = buf.WriteString(prefix)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write prefix: %w", err)
+	}
 
-	// #nosec G115 Write purpose length and purpose
-	_ = binary.Write(&buf, binary.BigEndian, uint32(len(purpose)))
-	buf.WriteString(purpose)
+	// #nosec G115: Write purpose length and purpose
+	err = binary.Write(&buf, binary.BigEndian, uint32(len(purpose)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to write purpose length: %w", err)
+	}
+	_, err = buf.WriteString(purpose)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write purpose: %w", err)
+	}
 
-	// #nosec G115 Write baseNonce length and baseNonce (may be zero-length)
-	_ = binary.Write(&buf, binary.BigEndian, uint32(len(baseNonce)))
-	buf.Write(baseNonce)
+	// #nosec G115: Write baseNonce length and baseNonce (may be zero-length)
+	err = binary.Write(&buf, binary.BigEndian, uint32(len(baseNonce)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to write baseNonce length: %w", err)
+	}
+	_, err = buf.Write(baseNonce)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write baseNonce: %w", err)
+	}
 
 	return buf.Bytes(), nil
 }
