@@ -17,7 +17,7 @@ require (
 	github.com/go-git/go-git/v5 v5.17.0
 	github.com/mattn/go-isatty v0.0.20
 	github.com/nekrassov01/logger v0.0.9
-	github.com/urfave/cli/v3 v3.6.2
+	github.com/urfave/cli/v3 v3.8.0
 	github.com/zalando/go-keyring v0.2.8
 	golang.org/x/sync v0.19.0
 	golang.org/x/term v0.41.0
