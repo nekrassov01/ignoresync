@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
@@ -118,6 +119,9 @@ func (o *Manager) ListCredentials() ([]KeyEntry, error) {
 		}
 		entries = append(entries, key)
 	}
+	slices.SortFunc(entries, func(a, b KeyEntry) int {
+		return strings.Compare(a.KeyID, b.KeyID)
+	})
 	return entries, nil
 }
 
