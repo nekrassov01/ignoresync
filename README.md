@@ -589,7 +589,8 @@ ignoresync completion bash|zsh|fish|pwsh
 
 - [x] Support CI mode
 - [x] Support master key rotation
-- [ ] GitHub Actions
+- [ ] Improve release workflows
+- [ ] Add action.yaml
 - [ ] Add E2E testing
 
 ## Author
