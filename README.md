@@ -592,6 +592,7 @@ ignoresync completion bash|zsh|fish|pwsh
 - [ ] Improve release workflows
 - [ ] Add action.yaml
 - [ ] Add E2E testing
+- [ ] Support launching UI locally
 
 ## Author
 
