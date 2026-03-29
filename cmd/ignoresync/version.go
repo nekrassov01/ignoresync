@@ -3,7 +3,7 @@ package main
 import "fmt"
 
 // version is the current version.
-const version = "0.0.0"
+const version = "0.0.1"
 
 // revision is the git revision.
 var revision = ""
