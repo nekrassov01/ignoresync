@@ -2,7 +2,7 @@
   <h2 align="center">IGNORESYNC</h2>
   <p align="center">Your shadow repository for ignored files</p>
   <p align="center">
-    <a href="https://github.com/nekrassov01/ignoresync/actions/workflows/ci.yaml"><img src="https://github.com/nekrassov01/ignoresync/actions/workflows/ci.yaml/badge.svg?branch=main" alt="CI" /></a>
+    <a href="https://github.com/nekrassov01/ignoresync/actions/workflows/ci.yml"><img src="https://github.com/nekrassov01/ignoresync/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" /></a>
     <a href="https://pkg.go.dev/github.com/nekrassov01/ignoresync"><img src="https://pkg.go.dev/badge/github.com/nekrassov01/ignoresync.svg" alt="Go Reference" /></a>
     <a href="https://goreportcard.com/report/github.com/nekrassov01/ignoresync"><img src="https://goreportcard.com/badge/github.com/nekrassov01/ignoresync" alt="Go Report Card" /></a>
     <img src="https://img.shields.io/github/license/nekrassov01/ignoresync" alt="LICENSE" />
@@ -590,7 +590,7 @@ ignoresync completion bash|zsh|fish|pwsh
 - [x] Support CI mode
 - [x] Support master key rotation
 - [ ] Improve release workflows
-- [ ] Add action.yaml
+- [ ] Add action.yml
 - [ ] Add E2E testing
 - [ ] Support launching UI locally
 

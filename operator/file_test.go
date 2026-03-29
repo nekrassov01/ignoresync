@@ -288,10 +288,10 @@ func TestOperator_bundlePatterns(t *testing.T) {
 		{
 			name: "success",
 			args: args{
-				patterns: []string{".env", "config/*.yaml"},
+				patterns: []string{".env", "config/*.yml"},
 			},
 			want: want{
-				patterns: []string{".env", "config/*.yaml"},
+				patterns: []string{".env", "config/*.yml"},
 			},
 		},
 		{
@@ -461,11 +461,11 @@ func TestOperator_restorePatterns(t *testing.T) {
 				w:      &bytes.Buffer{},
 			},
 			args: args{
-				r: (&Operator{}).bundlePatterns([]string{".env", "config/*.yaml"}),
+				r: (&Operator{}).bundlePatterns([]string{".env", "config/*.yml"}),
 			},
 			want: want{
-				patterns:   []string{".env", "config/*.yaml"},
-				matches:    [][]string{{".env"}, {"config", "app.yaml"}},
+				patterns:   []string{".env", "config/*.yml"},
+				matches:    [][]string{{".env"}, {"config", "app.yml"}},
 				mismatches: [][]string{{"before.txt"}, {"README.md"}},
 				isError:    false,
 			},
@@ -494,13 +494,13 @@ func TestOperator_restorePatterns(t *testing.T) {
 				w:      &bytes.Buffer{},
 			},
 			args: args{
-				r: (&Operator{}).bundlePatterns([]string{".env", "config/*.yaml"}),
+				r: (&Operator{}).bundlePatterns([]string{".env", "config/*.yml"}),
 			},
 			want: want{
-				patterns:   []string{".env", "config/*.yaml"},
-				output:     []string{"preview:", "pattern", ".env", "config/*.yaml"},
+				patterns:   []string{".env", "config/*.yml"},
+				output:     []string{"preview:", "pattern", ".env", "config/*.yml"},
 				matches:    [][]string{{"before.txt"}},
-				mismatches: [][]string{{".env"}, {"config", "app.yaml"}},
+				mismatches: [][]string{{".env"}, {"config", "app.yml"}},
 				isError:    false,
 			},
 		},
