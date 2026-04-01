@@ -18,7 +18,7 @@ BIN_BUMP := github.com/x-motemen/gobump/cmd/gobump@latest
 
 export GO111MODULE=on
 
-.PHONY: deps deps-lint deps-vuln deps-bump clean build check test cover bench lint vuln show-version check-git publish release
+.PHONY: deps deps-lint deps-vuln deps-bump clean build check test cover bench lint vuln show-version show-revision check-git publish release
 
 # -------
 #  deps
