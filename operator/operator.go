@@ -336,11 +336,11 @@ func (o *Operator) Rewrap(ctx context.Context, state *manager.State) error {
 					if err != nil {
 						return NewDecryptError(err)
 					}
-					rk, err := decryptKey(oldWK, meta.WrappedRepoKey, oldAAD)
+					oldRK, err := decryptKey(oldWK, meta.WrappedRepoKey, oldAAD)
 					if err != nil {
 						return NewDecryptError(err)
 					}
-					defer clear(rk)
+					defer clear(oldRK)
 
 					// Step 7: Derive LocalKey from new MasterKey
 					newMK, ok := state.MasterKeys[state.KeyID]
@@ -365,7 +365,7 @@ func (o *Operator) Rewrap(ctx context.Context, state *manager.State) error {
 					if err != nil {
 						return NewEncryptError(err)
 					}
-					newWRK, err := encryptKey(newWK, rk, newAAD)
+					newWRK, err := encryptKey(newWK, oldRK, newAAD)
 					if err != nil {
 						return NewEncryptError(err)
 					}
@@ -475,22 +475,22 @@ func (o *Operator) createKeySet(ctx context.Context, state *manager.State, prefi
 // loadKeySet restores the RepoKey through a series of workflows and returns it along with the necessary wrapping keys.
 func (o *Operator) loadKeySet(ctx context.Context, state *manager.State, prefix string) (*keySet, error) {
 	// Step 1: Download and parse metadata from existing object in S3
-	m, etag, err := o.head(ctx, state, prefix)
+	meta, etag, err := o.head(ctx, state, prefix)
 	if err != nil {
 		return nil, NewDownloadError(err)
 	}
 
 	// Step 2: Check MasterKey availability
-	if state.KeyID != m.KeyID {
-		return nil, NewValidateError(fmt.Errorf("key id mismatch, rewrap required: current=%s, metadata=%s", state.KeyID, m.KeyID))
+	if state.KeyID != meta.KeyID {
+		return nil, NewValidateError(fmt.Errorf("key id mismatch, rewrap required: current=%s, metadata=%s", state.KeyID, meta.KeyID))
 	}
-	mk, ok := state.MasterKeys[m.KeyID]
+	mk, ok := state.MasterKeys[meta.KeyID]
 	if !ok {
-		return nil, NewValidateError(fmt.Errorf("required master key id %q not available in local state", m.KeyID))
+		return nil, NewValidateError(fmt.Errorf("required master key id %q not available in local state", meta.KeyID))
 	}
 
 	// Step 3: Decrypt CloudKey using AWS KMS Decrypt API
-	ck, err := o.decryptCloudKey(ctx, state, m.WrappedCloudKey)
+	ck, err := o.decryptCloudKey(ctx, state, meta.WrappedCloudKey)
 	if err != nil {
 		return nil, NewDecryptError(err)
 	}
@@ -515,7 +515,7 @@ func (o *Operator) loadKeySet(ctx context.Context, state *manager.State, prefix 
 	if err != nil {
 		return nil, NewDecryptError(err)
 	}
-	rk, err := decryptKey(wk, m.WrappedRepoKey, aad)
+	rk, err := decryptKey(wk, meta.WrappedRepoKey, aad)
 	if err != nil {
 		return nil, NewDecryptError(err)
 	}
@@ -523,8 +523,8 @@ func (o *Operator) loadKeySet(ctx context.Context, state *manager.State, prefix 
 	// Step 7: Return RepoKey, WrappedWrapKey, WrappedCloudKey, and ETag
 	return &keySet{
 		rk:   rk,
-		wrk:  m.WrappedRepoKey,
-		wck:  m.WrappedCloudKey,
+		wrk:  meta.WrappedRepoKey,
+		wck:  meta.WrappedCloudKey,
 		etag: etag,
 	}, nil
 }

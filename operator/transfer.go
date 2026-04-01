@@ -11,7 +11,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	s3m "github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	s3c "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
 	"github.com/nekrassov01/ignoresync/manager"
@@ -33,7 +32,7 @@ func (o *Operator) upload(ctx context.Context, state *manager.State, body io.Rea
 			},
 		}
 	}
-	in := &s3c.PutObjectInput{
+	in := &s3.PutObjectInput{
 		Bucket:                  aws.String(state.Bucket.ARN.Resource),
 		Key:                     aws.String(prefix),
 		Body:                    body,
@@ -68,11 +67,11 @@ func (o *Operator) download(ctx context.Context, state *manager.State, prefix st
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to get object: %w", err)
 	}
-	m, err := parseMetadata(out.Metadata)
+	meta, err := parseMetadata(out.Metadata)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to parse metadata: %w", err)
 	}
-	return out.Body, m, out.ETag, nil
+	return out.Body, meta, out.ETag, nil
 }
 
 // // head retrieves metadata for objects with the specified prefix from S3, parses it, and returns the results.
@@ -91,11 +90,11 @@ func (o *Operator) head(ctx context.Context, state *manager.State, prefix string
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to head object: %w", err)
 	}
-	m, err := parseMetadata(out.Metadata)
+	meta, err := parseMetadata(out.Metadata)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to parse metadata: %w", err)
 	}
-	return m, out.ETag, nil
+	return meta, out.ETag, nil
 }
 
 // delete deletes an object from S3 with the given prefix.
@@ -125,7 +124,7 @@ func (o *Operator) waitUpload(ctx context.Context, state *manager.State, prefix 
 			},
 		}
 	}
-	in := &s3c.HeadObjectInput{
+	in := &s3.HeadObjectInput{
 		Bucket:              aws.String(state.Bucket.ARN.Resource),
 		Key:                 aws.String(prefix),
 		ExpectedBucketOwner: aws.String(state.Account),
