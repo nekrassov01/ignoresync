@@ -14,17 +14,19 @@ type baseError struct {
 // Error returns the string representation of the error.
 func (e *baseError) Error() string {
 	var b strings.Builder
-	l := len(e.pkg) + 2 + len(e.kind) + 2
+	l := len(e.pkg) + 2 + len(e.kind)
+	var s string
 	if e.err != nil {
-		l += 2 + len(e.err.Error())
+		s = e.err.Error()
+		l += 2 + len(s)
 	}
 	b.Grow(l)
 	b.WriteString(e.pkg)
 	b.WriteString(": ")
 	b.WriteString(e.kind)
-	if e.err != nil {
+	if s != "" {
 		b.WriteString(": ")
-		b.WriteString(e.err.Error())
+		b.WriteString(s)
 	}
 	return b.String()
 }
