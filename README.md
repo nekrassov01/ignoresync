@@ -475,7 +475,7 @@ ignoresync rotate --profile dev
 The `leave` command completely removes State from your local machine. This disconnects you from the environment. Please note that all master keys registered with State will be deleted.
 
 ```sh
-ignoresync rotate --profile dev
+ignoresync leave
 ```
 
 ### Push
@@ -532,21 +532,21 @@ ignoresync rewrap --profile dev
 
 The behavior of each subcommand in CI mode is as follows:
 
-| Command      | Behavior in CI mode                                                                                                       |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| `bootstrap`  | Skipped. No environment is created, and no local state is stored.                                                         |
-| `check`      | Runs normally. The state is derived from `IGNORESYNC_CREDENTIAL` instead of being loaded from the keystore.               |
-| `activate`   | Skipped. No local state is stored.                                                                                        |
-| `deactivate` | Skipped. No local state is deleted.                                                                                       |
-| `list`       | Skipped. No local state is rotated.                                                                                       |
-| `rotate`     | Skipped. No local state is rotated.                                                                                       |
-| `leave`      | Skipped. No local state is rotated.                                                                                       |
-| `push`       | Runs normally. The state is derived from `IGNORESYNC_CREDENTIAL` instead of being loaded from the keystore.               |
-| `pull`       | Runs normally. The state is derived from `IGNORESYNC_CREDENTIAL`, and `--overwrite` is effectively enabled automatically. |
-| `rm`         | Runs normally. The state is derived from `IGNORESYNC_CREDENTIAL` instead of being loaded from the keystore.               |
-| `set`        | Runs normally. The state is derived from `IGNORESYNC_CREDENTIAL` instead of being loaded from the keystore.               |
-| `preview`    | Runs normally. The state is derived from `IGNORESYNC_CREDENTIAL` instead of being loaded from the keystore.               |
-| `rewrap`     | Runs normally. The state is derived from `IGNORESYNC_CREDENTIAL` instead of being loaded from the keystore.               |
+| Command      | Behavior in CI mode                |
+| ------------ | ---------------------------------- |
+| `bootstrap`  | Skipped                            |
+| `check`      | Runs normally                      |
+| `activate`   | Skipped                            |
+| `deactivate` | Skipped                            |
+| `list`       | Skipped                            |
+| `rotate`     | Skipped                            |
+| `leave`      | Skipped                            |
+| `push`       | Runs normally                      |
+| `pull`       | The `--overwrite` flag is enforced |
+| `rm`         | Runs normally                      |
+| `set`        | Runs normally                      |
+| `preview`    | Runs normally                      |
+| `rewrap`     | Runs normally                      |
 
 ## Advanced Usage
 
@@ -589,8 +589,10 @@ ignoresync completion bash|zsh|fish|pwsh
 
 - [x] Support CI mode
 - [x] Support master key rotation
-- [ ] Improve release workflows
+- [ ] Use S3 transfermanager instead S3 manager
+- [ ] Run application that depends on files without files
 - [ ] Add action.yml
+- [ ] Improve release workflows
 - [ ] Add E2E testing
 - [ ] Support launching UI locally
 
