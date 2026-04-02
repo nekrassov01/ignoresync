@@ -741,6 +741,49 @@ func Test_buildAAD(t *testing.T) {
 			},
 		},
 		{
+			name: "success repo purpose with empty base nonce",
+			args: args{
+				prefix:    "obj",
+				purpose:   "repo",
+				baseNonce: nil,
+			},
+			want: want{
+				value: func() []byte {
+					b := []byte{}
+					b = append(b, []byte{0, 0, 0, 1}...) // schemeVersion
+					b = append(b, []byte{0, 0, 0, 3}...) // len("obj")
+					b = append(b, []byte("obj")...)
+					b = append(b, []byte{0, 0, 0, 4}...) // len("repo")
+					b = append(b, []byte("repo")...)
+					b = append(b, []byte{0, 0, 0, 0}...) // len(baseNonce) = 0
+					return b
+				}(),
+				isError: false,
+			},
+		},
+		{
+			name: "success repo purpose with base nonce",
+			args: args{
+				prefix:    "obj",
+				purpose:   "repo",
+				baseNonce: []byte{1, 2, 3},
+			},
+			want: want{
+				value: func() []byte {
+					b := []byte{}
+					b = append(b, []byte{0, 0, 0, 1}...) // schemeVersion
+					b = append(b, []byte{0, 0, 0, 3}...) // len("obj")
+					b = append(b, []byte("obj")...)
+					b = append(b, []byte{0, 0, 0, 4}...) // len("repo")
+					b = append(b, []byte("repo")...)
+					b = append(b, []byte{0, 0, 0, 3}...) // len(baseNonce)
+					b = append(b, []byte{1, 2, 3}...)
+					return b
+				}(),
+				isError: false,
+			},
+		},
+		{
 			name: "zero length prefix",
 			args: args{
 				prefix:    "",
