@@ -276,6 +276,17 @@ func bootstrap(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
+	// Check if state already exists to prevent accidental bootstrapping with another credential.
+	exist, err := man.CheckStateExist()
+	if err != nil {
+		return err
+	}
+	if exist {
+		msg := "skip bootstrapping: state already exists in the keyring"
+		logger.Warn(msg)
+		return nil
+	}
+
 	// Prompt for overwrite
 	msg := fmt.Sprintf("confirm your profile: account=%s region=%s: ok?", man.Account, man.Region)
 	if _, err := prompt.Confirm(cmd.Writer, msg, "canceled"); err != nil {
