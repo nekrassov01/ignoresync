@@ -9,7 +9,7 @@ import (
 	"maps"
 	"testing"
 
-	s3m "github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/smithy-go"
 	"github.com/nekrassov01/ignoresync/manager"
@@ -48,39 +48,19 @@ func TestOperator_upload(t *testing.T) {
 			name: "success",
 			fields: fields{
 				s3: &mockOperator{
-					newUploaderFunc: func(optFns ...func(*s3m.Uploader)) *s3m.Uploader {
-						outer := &s3m.Uploader{
-							ClientOptions: nil,
-						}
-						for _, optFn := range optFns {
-							optFn(outer)
-						}
-						return s3m.NewUploader(
+					newTransferManagerFunc: func() *transfermanager.Client {
+						return transfermanager.New(
 							&mockOperator{
 								putObjectFunc: func(_ context.Context, _ *s3.PutObjectInput, _ ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
-									inner := &s3.Options{}
-									for _, opt := range outer.ClientOptions {
-										opt(inner)
-									}
 									return &s3.PutObjectOutput{}, nil
 								},
 							},
 						)
 					},
-					newObjectExistsWaiterFunc: func(optFns ...func(*s3.ObjectExistsWaiterOptions)) *s3.ObjectExistsWaiter {
-						outer := &s3.ObjectExistsWaiterOptions{
-							ClientOptions: nil,
-						}
-						for _, optFn := range optFns {
-							optFn(outer)
-						}
+					newObjectExistsWaiterFunc: func(_ ...func(*s3.ObjectExistsWaiterOptions)) *s3.ObjectExistsWaiter {
 						return s3.NewObjectExistsWaiter(
 							&mockOperator{
 								headObjectFunc: func(_ context.Context, _ *s3.HeadObjectInput, _ ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
-									inner := &s3.Options{}
-									for _, opt := range outer.ClientOptions {
-										opt(inner)
-									}
 									return &s3.HeadObjectOutput{}, nil
 								},
 							},
@@ -104,8 +84,8 @@ func TestOperator_upload(t *testing.T) {
 			name: "error at upload",
 			fields: fields{
 				s3: &mockOperator{
-					newUploaderFunc: func(_ ...func(*s3m.Uploader)) *s3m.Uploader {
-						return s3m.NewUploader(
+					newTransferManagerFunc: func() *transfermanager.Client {
+						return transfermanager.New(
 							&mockOperator{
 								putObjectFunc: func(_ context.Context, _ *s3.PutObjectInput, _ ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
 									return nil, testutil.NewError()
@@ -140,8 +120,8 @@ func TestOperator_upload(t *testing.T) {
 			name: "error at wait upload",
 			fields: fields{
 				s3: &mockOperator{
-					newUploaderFunc: func(_ ...func(*s3m.Uploader)) *s3m.Uploader {
-						return s3m.NewUploader(
+					newTransferManagerFunc: func() *transfermanager.Client {
+						return transfermanager.New(
 							&mockOperator{
 								putObjectFunc: func(_ context.Context, _ *s3.PutObjectInput, _ ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
 									return &s3.PutObjectOutput{}, nil
@@ -214,11 +194,7 @@ func TestOperator_download(t *testing.T) {
 			name: "success",
 			fields: fields{
 				s3: &mockOperator{
-					getObjectFunc: func(_ context.Context, _ *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
-						opts := &s3.Options{}
-						for _, optFn := range optFns {
-							optFn(opts)
-						}
+					getObjectFunc: func(_ context.Context, _ *s3.GetObjectInput, _ ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
 						return &s3.GetObjectOutput{
 							Body:     io.NopCloser(bytes.NewReader([]byte("body"))),
 							Metadata: testMetadataInput,
@@ -419,11 +395,7 @@ func TestOperator_head(t *testing.T) {
 			name: "success",
 			fields: fields{
 				s3: &mockOperator{
-					headObjectFunc: func(_ context.Context, _ *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
-						opts := &s3.Options{}
-						for _, optFn := range optFns {
-							optFn(opts)
-						}
+					headObjectFunc: func(_ context.Context, _ *s3.HeadObjectInput, _ ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
 						return &s3.HeadObjectOutput{
 							Metadata: testMetadataInput,
 						}, nil
@@ -605,11 +577,7 @@ func TestOperator_delete(t *testing.T) {
 			name: "success",
 			fields: fields{
 				s3: &mockOperator{
-					deleteObjectFunc: func(_ context.Context, _ *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
-						opts := &s3.Options{}
-						for _, optFn := range optFns {
-							optFn(opts)
-						}
+					deleteObjectFunc: func(_ context.Context, _ *s3.DeleteObjectInput, _ ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
 						return &s3.DeleteObjectOutput{}, nil
 					},
 				},

@@ -589,7 +589,7 @@ ignoresync completion bash|zsh|fish|pwsh
 
 - [x] Support CI mode
 - [x] Support master key rotation
-- [ ] Use S3 transfermanager instead S3 manager
+- [x] Use S3 transfermanager instead S3 manager
 - [ ] Run application that depends on files without files
 - [ ] Add action.yml
 - [ ] Improve release workflows

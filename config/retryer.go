@@ -1,4 +1,4 @@
-package operator
+package config
 
 import (
 	"strings"
@@ -10,9 +10,6 @@ import (
 
 var _ retry.IsErrorRetryable = (*isErrorRetryer)(nil)
 
-// retryer is a shared retryer instance used for all AWS API calls in the operator.
-var retryer = NewRetryer()
-
 // codes is the set of HTTP status codes that should be retried.
 // 429 Too Many Requests not included in DefaultRetryableHTTPStatusCodes.
 var codes = retry.RetryableHTTPStatusCode{
@@ -22,10 +19,16 @@ var codes = retry.RetryableHTTPStatusCode{
 }
 
 // NewRetryer creates a new retryer with the custom retry logic and backoff strategy.
-func NewRetryer() aws.RetryerV2 {
+// config.WithRetryer requires a function returning aws.Retryer, but retry.NewStandard
+// returns a struct that implements aws.RetryerV2. The SDK internally type-asserts the
+// aws.Retryer to aws.RetryerV2 and wraps it if necessary. Therefore, returning aws.Retryer
+// here ensures compatibility with config.WithRetryer while still providing full RetryerV2
+// functionality at runtime.
+// see: https://github.com/aws/aws-sdk-go-v2/blob/main/aws/retry/retry.go#L79-L86
+func NewRetryer() aws.Retryer {
 	return retry.NewStandard(
 		func(o *retry.StandardOptions) {
-			o.MaxAttempts = MaxRetryAttempts
+			o.MaxAttempts = maxRetryAttempts
 			o.Retryables = append(o.Retryables, &isErrorRetryer{})
 			o.Retryables = append(o.Retryables, codes)
 			o.RateLimiter = ratelimit.None

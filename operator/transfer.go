@@ -9,9 +9,10 @@ import (
 	"io"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	s3m "github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
+	transfertypes "github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
 	"github.com/nekrassov01/ignoresync/manager"
 )
@@ -22,30 +23,24 @@ func (o *Operator) upload(ctx context.Context, state *manager.State, body io.Rea
 	if err != nil {
 		return fmt.Errorf("failed to marshal sse encryption context: %w", err)
 	}
-	opt := func(u *s3m.Uploader) {
-		u.PartSize = uploadPartSize
-		u.Concurrency = uploadConcurrency
-		u.ClientOptions = []func(o *s3.Options){
-			func(o *s3.Options) {
-				o.Region = state.Region
-				o.Retryer = retryer
-			},
-		}
+	opt := func(t *transfermanager.Options) {
+		t.PartSizeBytes = uploadPartSize
+		t.Concurrency = uploadConcurrency
 	}
-	in := &s3.PutObjectInput{
+	in := &transfermanager.UploadObjectInput{
 		Bucket:                  aws.String(state.Bucket.ARN.Resource),
 		Key:                     aws.String(prefix),
 		Body:                    body,
 		ExpectedBucketOwner:     aws.String(state.Account),
-		ServerSideEncryption:    types.ServerSideEncryptionAwsKms,
-		SSEKMSKeyId:             aws.String(state.SSEKey.ARN.String()),
+		ServerSideEncryption:    transfertypes.ServerSideEncryptionAwsKms,
+		SSEKMSKeyID:             aws.String(state.SSEKey.ARN.String()),
 		SSEKMSEncryptionContext: aws.String(base64.StdEncoding.EncodeToString(encryptionContext)),
-		ChecksumAlgorithm:       types.ChecksumAlgorithmSha256,
+		ChecksumAlgorithm:       transfertypes.ChecksumAlgorithmSha256,
 		Metadata:                metadata,
 		IfMatch:                 etag,
 	}
-	uploader := o.s3.NewUploader(opt)
-	if _, err = uploader.Upload(ctx, in); err != nil {
+	transfer := o.s3.NewTransferManager()
+	if _, err := transfer.UploadObject(ctx, in, opt); err != nil {
 		return fmt.Errorf("failed to upload object: %w", err)
 	}
 	return o.waitUpload(ctx, state, prefix)
@@ -53,17 +48,13 @@ func (o *Operator) upload(ctx context.Context, state *manager.State, body io.Rea
 
 // download downloads an object from S3 with the given prefix and returns its body and parsed metadata.
 func (o *Operator) download(ctx context.Context, state *manager.State, prefix string) (io.ReadCloser, *metadata, *string, error) {
-	opt := func(o *s3.Options) {
-		o.Region = state.Region
-		o.Retryer = retryer
-	}
 	in := &s3.GetObjectInput{
 		Bucket:              aws.String(state.Bucket.ARN.Resource),
 		Key:                 aws.String(prefix),
 		ExpectedBucketOwner: aws.String(state.Account),
-		ChecksumMode:        types.ChecksumModeEnabled,
+		ChecksumMode:        s3types.ChecksumModeEnabled,
 	}
-	out, err := o.s3.GetObject(ctx, in, opt)
+	out, err := o.s3.GetObject(ctx, in)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to get object: %w", err)
 	}
@@ -76,17 +67,13 @@ func (o *Operator) download(ctx context.Context, state *manager.State, prefix st
 
 // // head retrieves metadata for objects with the specified prefix from S3, parses it, and returns the results.
 func (o *Operator) head(ctx context.Context, state *manager.State, prefix string) (*metadata, *string, error) {
-	opt := func(o *s3.Options) {
-		o.Region = state.Region
-		o.Retryer = retryer
-	}
 	in := &s3.HeadObjectInput{
 		Bucket:              aws.String(state.Bucket.ARN.Resource),
 		Key:                 aws.String(prefix),
 		ExpectedBucketOwner: aws.String(state.Account),
-		ChecksumMode:        types.ChecksumModeEnabled,
+		ChecksumMode:        s3types.ChecksumModeEnabled,
 	}
-	out, err := o.s3.HeadObject(ctx, in, opt)
+	out, err := o.s3.HeadObject(ctx, in)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to head object: %w", err)
 	}
@@ -99,16 +86,12 @@ func (o *Operator) head(ctx context.Context, state *manager.State, prefix string
 
 // delete deletes an object from S3 with the given prefix.
 func (o *Operator) delete(ctx context.Context, state *manager.State, prefix string) error {
-	opt := func(o *s3.Options) {
-		o.Region = state.Region
-		o.Retryer = retryer
-	}
 	in := &s3.DeleteObjectInput{
 		Bucket:              aws.String(state.Bucket.ARN.Resource),
 		Key:                 aws.String(prefix),
 		ExpectedBucketOwner: aws.String(state.Account),
 	}
-	if _, err := o.s3.DeleteObject(ctx, in, opt); err != nil {
+	if _, err := o.s3.DeleteObject(ctx, in); err != nil {
 		return fmt.Errorf("failed to delete object: %w", err)
 	}
 	return nil
@@ -116,20 +99,12 @@ func (o *Operator) delete(ctx context.Context, state *manager.State, prefix stri
 
 // waitUpload waits until the uploaded object is available in S3, to ensure subsequent download can succeed.
 func (o *Operator) waitUpload(ctx context.Context, state *manager.State, prefix string) error {
-	opt := func(opt *s3.ObjectExistsWaiterOptions) {
-		opt.ClientOptions = []func(o *s3.Options){
-			func(o *s3.Options) {
-				o.Region = state.Region
-				o.Retryer = retryer
-			},
-		}
-	}
 	in := &s3.HeadObjectInput{
 		Bucket:              aws.String(state.Bucket.ARN.Resource),
 		Key:                 aws.String(prefix),
 		ExpectedBucketOwner: aws.String(state.Account),
 	}
-	waiter := o.s3.NewObjectExistsWaiter(opt)
+	waiter := o.s3.NewObjectExistsWaiter()
 	if err := waiter.Wait(ctx, in, uploadMaxWaitDur); err != nil {
 		return fmt.Errorf("failed to wait upload: %w", err)
 	}

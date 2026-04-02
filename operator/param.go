@@ -110,9 +110,6 @@ var (
 /* Retry parameters */
 
 const (
-	// MaxRetryAttempts is the maximum number of retry attempts.
-	MaxRetryAttempts = 10
-
 	// MaxRetryAttemptsConditionalError is the maximum number of retry attempts for "PreconditionFailed" and "ConditionalRequestConflict".
 	MaxRetryAttemptsConditionalError = 3
 )

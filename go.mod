@@ -5,10 +5,10 @@ go 1.26.1
 require (
 	github.com/aws/aws-sdk-go-v2 v1.41.5
 	github.com/aws/aws-sdk-go-v2/config v1.32.13
-	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.22.10
+	github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager v0.1.13
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.71.9
 	github.com/aws/aws-sdk-go-v2/service/kms v1.50.4
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.97.3
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.98.0
 	github.com/aws/aws-sdk-go-v2/service/sts v1.41.10
 	github.com/aws/smithy-go v1.24.2
 	github.com/dustin/go-humanize v1.0.1

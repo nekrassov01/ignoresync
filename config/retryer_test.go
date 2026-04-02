@@ -1,4 +1,4 @@
-package operator
+package config
 
 import (
 	"errors"
@@ -31,7 +31,7 @@ func TestNewRetryer(t *testing.T) {
 				},
 			},
 			want: want{
-				maxAttempts: MaxRetryAttempts,
+				maxAttempts: maxRetryAttempts,
 				isRetryable: true,
 			},
 		},
@@ -44,7 +44,7 @@ func TestNewRetryer(t *testing.T) {
 				},
 			},
 			want: want{
-				maxAttempts: MaxRetryAttempts,
+				maxAttempts: maxRetryAttempts,
 				isRetryable: true,
 			},
 		},

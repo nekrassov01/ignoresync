@@ -5,7 +5,7 @@ import (
 	"io"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
@@ -17,12 +17,10 @@ var (
 
 // IS3 defines the interface for S3 client.
 type IS3 interface {
-	GetObject(ctx context.Context, params *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error)
-	PutObject(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error)
+	transfermanager.S3APIClient
 	DeleteObject(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error)
-	HeadObject(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error)
 	NewObjectExistsWaiter(opts ...func(*s3.ObjectExistsWaiterOptions)) *s3.ObjectExistsWaiter
-	NewUploader(opts ...func(*manager.Uploader)) *manager.Uploader
+	NewTransferManager() *transfermanager.Client
 }
 
 // IKMS defines the interface for KMS client.
@@ -58,9 +56,9 @@ func (o *S3) NewObjectExistsWaiter(opts ...func(*s3.ObjectExistsWaiterOptions)) 
 	return s3.NewObjectExistsWaiter(o.Client, opts...)
 }
 
-// NewUploader creates a new S3 uploader.
-func (o *S3) NewUploader(opts ...func(*manager.Uploader)) *manager.Uploader {
-	return manager.NewUploader(o.Client, opts...)
+// NewTransferManager creates a new S3 transfer manager.
+func (o *S3) NewTransferManager() *transfermanager.Client {
+	return transfermanager.New(o.Client)
 }
 
 // New creates a new Operator.
