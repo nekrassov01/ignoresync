@@ -25,7 +25,7 @@ type mockOperator struct {
 	headObjectFunc            func(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error)
 	listObjectsV2Func         func(ctx context.Context, params *s3.ListObjectsV2Input, optFns ...func(*s3.Options)) (*s3.ListObjectsV2Output, error)
 	deleteObjectFunc          func(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error)
-	newObjectExistsWaiterFunc func(opts ...func(*s3.ObjectExistsWaiterOptions)) *s3.ObjectExistsWaiter
+	newObjectExistsWaiterFunc func() *s3.ObjectExistsWaiter
 	newTransferManagerFunc    func() *transfermanager.Client
 	generateDataKeyFunc       func(ctx context.Context, params *kms.GenerateDataKeyInput, optFns ...func(*kms.Options)) (*kms.GenerateDataKeyOutput, error)
 	decryptFunc               func(ctx context.Context, params *kms.DecryptInput, optFns ...func(*kms.Options)) (*kms.DecryptOutput, error)
@@ -77,8 +77,8 @@ func (o *mockOperator) DeleteObject(ctx context.Context, params *s3.DeleteObject
 }
 
 // NewObjectExistsWaiter calls the mocked NewObjectExistsWaiter function.
-func (o *mockOperator) NewObjectExistsWaiter(opts ...func(*s3.ObjectExistsWaiterOptions)) *s3.ObjectExistsWaiter {
-	return o.newObjectExistsWaiterFunc(opts...)
+func (o *mockOperator) NewObjectExistsWaiter() *s3.ObjectExistsWaiter {
+	return o.newObjectExistsWaiterFunc()
 }
 
 // NewTransferManager calls the mocked NewTransferManager function.

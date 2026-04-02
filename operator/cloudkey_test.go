@@ -32,11 +32,7 @@ func TestOperator_generateCloudKey(t *testing.T) {
 			name: "success",
 			fields: fields{
 				kms: &mockOperator{
-					generateDataKeyFunc: func(_ context.Context, _ *kms.GenerateDataKeyInput, optFns ...func(*kms.Options)) (*kms.GenerateDataKeyOutput, error) {
-						opts := &kms.Options{}
-						for _, optFn := range optFns {
-							optFn(opts)
-						}
+					generateDataKeyFunc: func(_ context.Context, _ *kms.GenerateDataKeyInput, _ ...func(*kms.Options)) (*kms.GenerateDataKeyOutput, error) {
 						return &kms.GenerateDataKeyOutput{
 							Plaintext:      []byte("plaintext"),
 							CiphertextBlob: []byte("ciphertext"),
@@ -115,11 +111,7 @@ func TestOperator_decryptCloudKey(t *testing.T) {
 			name: "success",
 			fields: fields{
 				kms: &mockOperator{
-					decryptFunc: func(_ context.Context, _ *kms.DecryptInput, optFns ...func(*kms.Options)) (*kms.DecryptOutput, error) {
-						opts := &kms.Options{}
-						for _, optFn := range optFns {
-							optFn(opts)
-						}
+					decryptFunc: func(_ context.Context, _ *kms.DecryptInput, _ ...func(*kms.Options)) (*kms.DecryptOutput, error) {
 						return &kms.DecryptOutput{Plaintext: []byte("plaintext")}, nil
 					},
 				},

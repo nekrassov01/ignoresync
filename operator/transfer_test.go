@@ -57,7 +57,7 @@ func TestOperator_upload(t *testing.T) {
 							},
 						)
 					},
-					newObjectExistsWaiterFunc: func(_ ...func(*s3.ObjectExistsWaiterOptions)) *s3.ObjectExistsWaiter {
+					newObjectExistsWaiterFunc: func() *s3.ObjectExistsWaiter {
 						return s3.NewObjectExistsWaiter(
 							&mockOperator{
 								headObjectFunc: func(_ context.Context, _ *s3.HeadObjectInput, _ ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
@@ -93,7 +93,7 @@ func TestOperator_upload(t *testing.T) {
 							},
 						)
 					},
-					newObjectExistsWaiterFunc: func(_ ...func(*s3.ObjectExistsWaiterOptions)) *s3.ObjectExistsWaiter {
+					newObjectExistsWaiterFunc: func() *s3.ObjectExistsWaiter {
 						return s3.NewObjectExistsWaiter(
 							&mockOperator{
 								headObjectFunc: func(_ context.Context, _ *s3.HeadObjectInput, _ ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
@@ -129,7 +129,7 @@ func TestOperator_upload(t *testing.T) {
 							},
 						)
 					},
-					newObjectExistsWaiterFunc: func(_ ...func(*s3.ObjectExistsWaiterOptions)) *s3.ObjectExistsWaiter {
+					newObjectExistsWaiterFunc: func() *s3.ObjectExistsWaiter {
 						return s3.NewObjectExistsWaiter(
 							&mockOperator{
 								headObjectFunc: func(_ context.Context, _ *s3.HeadObjectInput, _ ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {

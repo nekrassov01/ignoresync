@@ -19,7 +19,7 @@ var (
 type IS3 interface {
 	transfermanager.S3APIClient
 	DeleteObject(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error)
-	NewObjectExistsWaiter(opts ...func(*s3.ObjectExistsWaiterOptions)) *s3.ObjectExistsWaiter
+	NewObjectExistsWaiter() *s3.ObjectExistsWaiter
 	NewTransferManager() *transfermanager.Client
 }
 
@@ -52,8 +52,8 @@ type Operator struct {
 }
 
 // NewObjectExistsWaiter creates a new ObjectExistsWaiter.
-func (o *S3) NewObjectExistsWaiter(opts ...func(*s3.ObjectExistsWaiterOptions)) *s3.ObjectExistsWaiter {
-	return s3.NewObjectExistsWaiter(o.Client, opts...)
+func (o *S3) NewObjectExistsWaiter() *s3.ObjectExistsWaiter {
+	return s3.NewObjectExistsWaiter(o.Client)
 }
 
 // NewTransferManager creates a new S3 transfer manager.

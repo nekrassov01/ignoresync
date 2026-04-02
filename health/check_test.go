@@ -253,11 +253,7 @@ func TestChecker_CheckStack(t *testing.T) {
 			name: "success",
 			fields: fields{
 				cfn: &mockChecker{
-					describeStacksFunc: func(_ context.Context, _ *cloudformation.DescribeStacksInput, optFns ...func(*cloudformation.Options)) (*cloudformation.DescribeStacksOutput, error) {
-						opts := &cloudformation.Options{}
-						for _, optFn := range optFns {
-							optFn(opts)
-						}
+					describeStacksFunc: func(_ context.Context, _ *cloudformation.DescribeStacksInput, _ ...func(*cloudformation.Options)) (*cloudformation.DescribeStacksOutput, error) {
 						return &cloudformation.DescribeStacksOutput{
 							Stacks: []cfntypes.Stack{
 								{
@@ -384,21 +380,13 @@ func TestChecker_CheckBucket(t *testing.T) {
 			name: "success",
 			fields: fields{
 				s3: &mockChecker{
-					headBucketFunc: func(_ context.Context, _ *s3.HeadBucketInput, optFns ...func(*s3.Options)) (*s3.HeadBucketOutput, error) {
-						opts := &s3.Options{}
-						for _, optFn := range optFns {
-							optFn(opts)
-						}
+					headBucketFunc: func(_ context.Context, _ *s3.HeadBucketInput, _ ...func(*s3.Options)) (*s3.HeadBucketOutput, error) {
 						return &s3.HeadBucketOutput{}, nil
 					},
 					putObjectFunc: func() func(_ context.Context, _ *s3.PutObjectInput, _ ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
 						// Fail the first time, succeed the second time
 						n := 0
-						return func(_ context.Context, _ *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
-							opts := &s3.Options{}
-							for _, optFn := range optFns {
-								optFn(opts)
-							}
+						return func(_ context.Context, _ *s3.PutObjectInput, _ ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
 							n++
 							if n == 1 {
 								return nil, testutil.NewError()
@@ -406,18 +394,10 @@ func TestChecker_CheckBucket(t *testing.T) {
 							return &s3.PutObjectOutput{}, nil
 						}
 					}(),
-					getObjectFunc: func(_ context.Context, _ *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
-						opts := &s3.Options{}
-						for _, optFn := range optFns {
-							optFn(opts)
-						}
+					getObjectFunc: func(_ context.Context, _ *s3.GetObjectInput, _ ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
 						return &s3.GetObjectOutput{Body: io.NopCloser(bytes.NewReader([]byte("healthcheck")))}, nil
 					},
-					deleteObjectFunc: func(_ context.Context, _ *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
-						opts := &s3.Options{}
-						for _, optFn := range optFns {
-							optFn(opts)
-						}
+					deleteObjectFunc: func(_ context.Context, _ *s3.DeleteObjectInput, _ ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
 						return &s3.DeleteObjectOutput{}, nil
 					},
 				},
@@ -729,20 +709,12 @@ func TestChecker_checkKey(t *testing.T) {
 			name: "success",
 			fields: fields{
 				kms: &mockChecker{
-					encryptFunc: func(_ context.Context, _ *kms.EncryptInput, optFns ...func(*kms.Options)) (*kms.EncryptOutput, error) {
-						opts := &kms.Options{}
-						for _, optFn := range optFns {
-							optFn(opts)
-						}
+					encryptFunc: func(_ context.Context, _ *kms.EncryptInput, _ ...func(*kms.Options)) (*kms.EncryptOutput, error) {
 						return &kms.EncryptOutput{CiphertextBlob: []byte("encrypted")}, nil
 					},
 					decryptFunc: func() func(_ context.Context, _ *kms.DecryptInput, _ ...func(*kms.Options)) (*kms.DecryptOutput, error) {
 						n := 0
-						return func(_ context.Context, _ *kms.DecryptInput, optFns ...func(*kms.Options)) (*kms.DecryptOutput, error) {
-							opts := &kms.Options{}
-							for _, optFn := range optFns {
-								optFn(opts)
-							}
+						return func(_ context.Context, _ *kms.DecryptInput, _ ...func(*kms.Options)) (*kms.DecryptOutput, error) {
 							n++
 							switch n {
 							case 1: // step1: decrypt OK
@@ -899,7 +871,7 @@ func TestChecker_checkKey(t *testing.T) {
 				cfn: test.fields.cfn,
 				w:   test.fields.w,
 			}
-			got, err := o.checkKey(test.args.ctx, test.args.state.SSEKey, test.args.state.Region)
+			got, err := o.checkKey(test.args.ctx, test.args.state.SSEKey)
 			testutil.CheckError(t, err != nil, test.want.isError)
 			testutil.CheckValue(t, got, test.want.value)
 		})

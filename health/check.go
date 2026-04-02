@@ -88,14 +88,11 @@ func (o *Checker) CheckState(_ context.Context, state *manager.State) (bool, err
 }
 
 // CheckStack checks if the CloudFormation stack exists and is in a complete state.
-func (o *Checker) CheckStack(ctx context.Context, state *manager.State) (bool, error) {
-	opt := func(opt *cloudformation.Options) {
-		opt.Region = state.Region
-	}
+func (o *Checker) CheckStack(ctx context.Context, _ *manager.State) (bool, error) {
 	in := &cloudformation.DescribeStacksInput{
 		StackName: aws.String(ignoresync.CanonicalName),
 	}
-	out, err := o.cfn.DescribeStacks(ctx, in, opt)
+	out, err := o.cfn.DescribeStacks(ctx, in)
 	if err != nil {
 		return false, NewStackError(errors.New("failed to describe stacks"))
 	}
@@ -111,9 +108,6 @@ func (o *Checker) CheckStack(ctx context.Context, state *manager.State) (bool, e
 
 // CheckBucket performs a head, put, get and delete round-trip test.
 func (o *Checker) CheckBucket(ctx context.Context, state *manager.State) (bool, error) {
-	opt := func(opt *s3.Options) {
-		opt.Region = state.Region
-	}
 	const prefix = "healthcheck"
 	body := []byte("healthcheck")
 
@@ -122,7 +116,7 @@ func (o *Checker) CheckBucket(ctx context.Context, state *manager.State) (bool, 
 		Bucket:              aws.String(state.Bucket.ARN.Resource),
 		ExpectedBucketOwner: aws.String(state.Account),
 	}
-	if _, err := o.s3.HeadBucket(ctx, in1, opt); err != nil {
+	if _, err := o.s3.HeadBucket(ctx, in1); err != nil {
 		return false, NewBucketError(errors.New("failed to head bucket"))
 	}
 
@@ -133,7 +127,7 @@ func (o *Checker) CheckBucket(ctx context.Context, state *manager.State) (bool, 
 		Body:                bytes.NewReader(body),
 		ExpectedBucketOwner: aws.String(state.Account),
 	}
-	if _, err := o.s3.PutObject(ctx, in2, opt); err == nil {
+	if _, err := o.s3.PutObject(ctx, in2); err == nil {
 		return false, NewBucketError(errors.New("put object succeeded without expected permissions"))
 	}
 
@@ -155,7 +149,7 @@ func (o *Checker) CheckBucket(ctx context.Context, state *manager.State) (bool, 
 		SSEKMSEncryptionContext: aws.String(base64.StdEncoding.EncodeToString(b)),
 		ChecksumAlgorithm:       s3types.ChecksumAlgorithmSha256,
 	}
-	if _, err := o.s3.PutObject(ctx, in3, opt); err != nil {
+	if _, err := o.s3.PutObject(ctx, in3); err != nil {
 		return false, NewBucketError(errors.New("failed to put object"))
 	}
 
@@ -165,7 +159,7 @@ func (o *Checker) CheckBucket(ctx context.Context, state *manager.State) (bool, 
 		Key:                 aws.String(prefix),
 		ExpectedBucketOwner: aws.String(state.Account),
 	}
-	out, err := o.s3.GetObject(ctx, in4, opt)
+	out, err := o.s3.GetObject(ctx, in4)
 	if err != nil {
 		return false, NewBucketError(errors.New("failed to get object"))
 	}
@@ -189,7 +183,7 @@ func (o *Checker) CheckBucket(ctx context.Context, state *manager.State) (bool, 
 		Key:                 aws.String(prefix),
 		ExpectedBucketOwner: aws.String(state.Account),
 	}
-	if _, err := o.s3.DeleteObject(ctx, in5, opt); err != nil {
+	if _, err := o.s3.DeleteObject(ctx, in5); err != nil {
 		return false, NewBucketError(errors.New("failed to delete object"))
 	}
 
@@ -198,7 +192,7 @@ func (o *Checker) CheckBucket(ctx context.Context, state *manager.State) (bool, 
 
 // CheckSSEKey performs a round-trip encryption/decryption test using the SSE KMS key to verify the existence and validity of the key.
 func (o *Checker) CheckSSEKey(ctx context.Context, state *manager.State) (bool, error) {
-	ok, err := o.checkKey(ctx, state.SSEKey, state.Region)
+	ok, err := o.checkKey(ctx, state.SSEKey)
 	if err != nil {
 		return false, NewKeyError(err)
 	}
@@ -207,7 +201,7 @@ func (o *Checker) CheckSSEKey(ctx context.Context, state *manager.State) (bool, 
 
 // CheckCSEKey performs a round-trip encryption/decryption test using the CSE KMS key to verify the existence and validity of the key.
 func (o *Checker) CheckCSEKey(ctx context.Context, state *manager.State) (bool, error) {
-	ok, err := o.checkKey(ctx, state.CSEKey, state.Region)
+	ok, err := o.checkKey(ctx, state.CSEKey)
 	if err != nil {
 		return false, NewKeyError(err)
 	}
@@ -215,10 +209,7 @@ func (o *Checker) CheckCSEKey(ctx context.Context, state *manager.State) (bool, 
 }
 
 // checkKey performs a round-trip encryption/decryption test.
-func (o *Checker) checkKey(ctx context.Context, target *manager.KMSKeyInfo, region string) (bool, error) {
-	opt := func(opt *kms.Options) {
-		opt.Region = region
-	}
+func (o *Checker) checkKey(ctx context.Context, target *manager.KMSKeyInfo) (bool, error) {
 	plaintext := []byte("healthcheck")
 
 	// Step 1: Decrypt OK
@@ -227,7 +218,7 @@ func (o *Checker) checkKey(ctx context.Context, target *manager.KMSKeyInfo, regi
 		Plaintext:         plaintext,
 		EncryptionContext: target.EncryptionContext,
 	}
-	out1, err := o.kms.Encrypt(ctx, in1, opt)
+	out1, err := o.kms.Encrypt(ctx, in1)
 	if err != nil {
 		return false, errors.New("failed to encrypt")
 	}
@@ -236,7 +227,7 @@ func (o *Checker) checkKey(ctx context.Context, target *manager.KMSKeyInfo, regi
 		CiphertextBlob:    out1.CiphertextBlob,
 		EncryptionContext: target.EncryptionContext,
 	}
-	out2, err := o.kms.Decrypt(ctx, in2, opt)
+	out2, err := o.kms.Decrypt(ctx, in2)
 	if err != nil {
 		return false, (errors.New("failed to decrypt"))
 	}
@@ -250,7 +241,7 @@ func (o *Checker) checkKey(ctx context.Context, target *manager.KMSKeyInfo, regi
 		CiphertextBlob:    out1.CiphertextBlob,
 		EncryptionContext: nil,
 	}
-	if _, err := o.kms.Decrypt(ctx, in3, opt); err == nil {
+	if _, err := o.kms.Decrypt(ctx, in3); err == nil {
 		return false, errors.New("security flaw: decrypted with invalid context")
 	}
 
@@ -266,7 +257,7 @@ func (o *Checker) checkKey(ctx context.Context, target *manager.KMSKeyInfo, regi
 		CiphertextBlob:    blob,
 		EncryptionContext: target.EncryptionContext,
 	}
-	if _, err := o.kms.Decrypt(ctx, in4, opt); err == nil {
+	if _, err := o.kms.Decrypt(ctx, in4); err == nil {
 		return false, errors.New("security flaw: decrypted tampered ciphertext")
 	}
 	return true, nil
