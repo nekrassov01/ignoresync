@@ -27,8 +27,8 @@ type RepoInfo struct {
 	targetPatterns []gitignore.Pattern // patterns to include as targets
 }
 
-// NewRepoInfo creates a new RepoInfo by opening the git repository at the given path.
-func NewRepoInfo(path, remote string) (*RepoInfo, error) {
+// newRepoInfo creates a new RepoInfo by opening the git repository at the given path.
+func newRepoInfo(path, remote string) (*RepoInfo, error) {
 	// Open git repository
 	repo, err := git.PlainOpen(path)
 	if err != nil {

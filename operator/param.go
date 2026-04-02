@@ -84,6 +84,13 @@ const (
 	uploadConcurrency = 4
 )
 
+/* Retry parameters */
+
+const (
+	// maxRetryAttemptsConditionalError is the maximum number of retry attempts for "PreconditionFailed" and "ConditionalRequestConflict".
+	maxRetryAttemptsConditionalError = 3
+)
+
 /* Repository parameters */
 
 var (
@@ -105,11 +112,4 @@ var (
 
 	// maxDiffSize defines the maximum size to load into memory for diff display.
 	maxDiffSize int64 = 1024 * 1024 * 1
-)
-
-/* Retry parameters */
-
-const (
-	// MaxRetryAttemptsConditionalError is the maximum number of retry attempts for "PreconditionFailed" and "ConditionalRequestConflict".
-	MaxRetryAttemptsConditionalError = 3
 )

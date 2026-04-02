@@ -125,7 +125,7 @@ func TestNewRepoInfo(t *testing.T) {
 					test.hook.after()
 				}
 			}()
-			got, err := NewRepoInfo(test.args.path, test.args.remote)
+			got, err := newRepoInfo(test.args.path, test.args.remote)
 			testutil.CheckError(t, err != nil, test.want.isError)
 			testutil.CheckValue(t, got, test.want.repo)
 		})

@@ -23,7 +23,7 @@ type keySet struct {
 
 // PushFiles archives files, encrypts them, and uploads them to S3.
 func (o *Operator) PushFiles(ctx context.Context, state *manager.State) error {
-	for i := range MaxRetryAttemptsConditionalError {
+	for i := range maxRetryAttemptsConditionalError {
 		attempt := func() error {
 			// Step 1: Create RepoKey and wrapping keys
 			set, err := o.loadOrCreateKeySet(ctx, state, o.prefixFiles)
@@ -51,7 +51,7 @@ func (o *Operator) PushFiles(ctx context.Context, state *manager.State) error {
 			return nil
 		}
 
-		if isConditionalError(attempt) && i < MaxRetryAttemptsConditionalError-1 {
+		if isConditionalError(attempt) && i < maxRetryAttemptsConditionalError-1 {
 			time.Sleep(time.Duration(100*(i+1)) * time.Millisecond)
 			continue
 		}
@@ -62,7 +62,7 @@ func (o *Operator) PushFiles(ctx context.Context, state *manager.State) error {
 
 // PushPatterns compresses patterns, encrypts them, and uploads them to S3.
 func (o *Operator) PushPatterns(ctx context.Context, state *manager.State, patterns []string) error {
-	for i := range MaxRetryAttemptsConditionalError {
+	for i := range maxRetryAttemptsConditionalError {
 		attempt := func() error {
 			// Step 1: Create RepoKey and wrapping keys
 			set, err := o.loadOrCreateKeySet(ctx, state, o.prefixPatterns)
@@ -81,7 +81,7 @@ func (o *Operator) PushPatterns(ctx context.Context, state *manager.State, patte
 			return nil
 		}
 
-		if isConditionalError(attempt) && i < MaxRetryAttemptsConditionalError-1 {
+		if isConditionalError(attempt) && i < maxRetryAttemptsConditionalError-1 {
 			time.Sleep(time.Duration(100*(i+1)) * time.Millisecond)
 			continue
 		}
@@ -290,7 +290,7 @@ func (o *Operator) Rewrap(ctx context.Context, state *manager.State) error {
 	eg, ctx := errgroup.WithContext(ctx)
 	for _, prefix := range []string{o.prefixFiles, o.prefixPatterns} {
 		eg.Go(func() error {
-			for i := range MaxRetryAttemptsConditionalError {
+			for i := range maxRetryAttemptsConditionalError {
 				attempt := func() error {
 					// Step 1: Download encrypted object and metadata from S3
 					body, meta, etag, err := o.download(ctx, state, prefix)
@@ -394,7 +394,7 @@ func (o *Operator) Rewrap(ctx context.Context, state *manager.State) error {
 					return nil
 				}
 
-				if isConditionalError(attempt) && i < MaxRetryAttemptsConditionalError-1 {
+				if isConditionalError(attempt) && i < maxRetryAttemptsConditionalError-1 {
 					time.Sleep(time.Duration(100*(i+1)) * time.Millisecond)
 					continue
 				}

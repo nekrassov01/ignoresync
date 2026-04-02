@@ -71,7 +71,7 @@ func New(w io.Writer, repoPath, remoteName string, cfg aws.Config) (*Operator, e
 	}
 
 	// Get repository information
-	repo, err := NewRepoInfo(repoPath, remoteName)
+	repo, err := newRepoInfo(repoPath, remoteName)
 	if err != nil {
 		return nil, err
 	}
