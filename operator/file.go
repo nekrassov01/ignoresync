@@ -353,6 +353,43 @@ func (o *Operator) restorePatterns(r io.Reader) ([]string, error) {
 	return patterns, nil
 }
 
+// cleanupFiles removes all files in the repository that match the ignore and target patterns.
+// This is the inverse of bundleFiles: it walks the same paths and deletes them.
+func (o *Operator) cleanupFiles() error {
+	ignoreMatcher := gitignore.NewMatcher(o.repo.ignorePatterns)
+	targetMatcher := gitignore.NewMatcher(o.repo.targetPatterns)
+
+	err := filepath.WalkDir(o.repo.path, func(path string, d os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return fmt.Errorf("failed to access local file: %w", walkErr)
+		}
+		if d.IsDir() && d.Name() == gitDir {
+			return filepath.SkipDir
+		}
+		if d.IsDir() {
+			return nil
+		}
+
+		rel, err := filepath.Rel(o.repo.path, path)
+		if err != nil {
+			return fmt.Errorf("failed to get relative path: %w", err)
+		}
+
+		tokens := strings.Split(filepath.ToSlash(rel), "/")
+		if !ignoreMatcher.Match(tokens, false) || !targetMatcher.Match(tokens, false) {
+			return nil
+		}
+
+		if err := os.Remove(path); err == nil {
+			o.printStatus("cleaned", rel, -1, "run:")
+		}
+
+		return nil
+	})
+
+	return err
+}
+
 // compareHash compares the SHA-256 hash of the local file with the remote file.
 func (o *Operator) compareHash(path string, remote *diffInfo) (bool, error) {
 	lf, err := os.Open(path) // #nosec G304

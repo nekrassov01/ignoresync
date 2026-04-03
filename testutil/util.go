@@ -96,6 +96,22 @@ func CheckFile(t *testing.T, path string, body []byte, mode os.FileMode) {
 	}
 }
 
+// CheckFileExists checks that a file exists at the given path.
+func CheckFileExists(t *testing.T, path string) {
+	t.Helper()
+	if _, err := os.Stat(path); err != nil {
+		t.Errorf("\nfile does not exist:\n%s\n", path)
+	}
+}
+
+// CheckFileNotExists checks that a file does not exist at the given path.
+func CheckFileNotExists(t *testing.T, path string) {
+	t.Helper()
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Errorf("\nfile still exists:\n%s\n", path)
+	}
+}
+
 // ReadBody reads and closes a ReadCloser for testing.
 func ReadBody(t *testing.T, body io.ReadCloser) []byte {
 	t.Helper()

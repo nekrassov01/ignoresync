@@ -543,6 +543,264 @@ func TestOperator_restorePatterns(t *testing.T) {
 	}
 }
 
+func TestOperator_cleanupFiles(t *testing.T) {
+	type fields struct {
+		repo *RepoInfo
+		w    io.Writer
+	}
+	type want struct {
+		removed   []string
+		remaining []string
+		output    []string
+		isError   bool
+	}
+	type hook struct {
+		before func()
+		after  func()
+	}
+	type store struct {
+		gitDir string
+	}
+	tmp := new(store)
+	tests := []struct {
+		name   string
+		fields fields
+		hook   hook
+		want   want
+	}{
+		{
+			name: "success",
+			fields: fields{
+				repo: &RepoInfo{
+					path:           testutil.RepoPath,
+					ignorePatterns: getPatterns([]string{"cleanup.txt"}),
+					targetPatterns: getPatterns([]string{"cleanup.txt"}),
+				},
+				w: &bytes.Buffer{},
+			},
+			want: want{
+				removed: []string{"cleanup.txt"},
+				output:  []string{"run:", "cleaned", "cleanup.txt"},
+				isError: false,
+			},
+			hook: hook{
+				before: func() {
+					gitDir = "dot_git"
+					if err := os.WriteFile(filepath.Join(testutil.RepoPath, "cleanup.txt"), []byte("cleanup\n"), 0o600); err != nil {
+						t.Fatal(err)
+					}
+				},
+				after: func() {
+					gitDir = tmp.gitDir
+				},
+			},
+		},
+		{
+			name: "success at multiple files",
+			fields: fields{
+				repo: &RepoInfo{
+					path:           testutil.RepoPath,
+					ignorePatterns: getPatterns([]string{"multi-1.txt", "multi-2.txt"}),
+					targetPatterns: getPatterns([]string{"multi-1.txt", "multi-2.txt"}),
+				},
+				w: &bytes.Buffer{},
+			},
+			want: want{
+				removed: []string{"multi-1.txt", "multi-2.txt"},
+				output:  []string{"run:", "cleaned", "multi-1.txt", "multi-2.txt"},
+				isError: false,
+			},
+			hook: hook{
+				before: func() {
+					gitDir = "dot_git"
+					if err := os.WriteFile(filepath.Join(testutil.RepoPath, "multi-1.txt"), []byte("1\n"), 0o600); err != nil {
+						t.Fatal(err)
+					}
+					if err := os.WriteFile(filepath.Join(testutil.RepoPath, "multi-2.txt"), []byte("2\n"), 0o600); err != nil {
+						t.Fatal(err)
+					}
+				},
+				after: func() {
+					gitDir = tmp.gitDir
+				},
+			},
+		},
+		{
+			name: "success at subdirectory",
+			fields: fields{
+				repo: &RepoInfo{
+					path:           testutil.RepoPath,
+					ignorePatterns: getPatterns([]string{"sub_dir/cleanup.txt"}),
+					targetPatterns: getPatterns([]string{"sub_dir/cleanup.txt"}),
+				},
+				w: &bytes.Buffer{},
+			},
+			want: want{
+				removed: []string{"sub_dir/cleanup.txt"},
+				output:  []string{"run:", "cleaned", "sub_dir/cleanup.txt"},
+				isError: false,
+			},
+			hook: hook{
+				before: func() {
+					gitDir = "dot_git"
+					if err := os.WriteFile(filepath.Join(testutil.RepoPath, "sub_dir/cleanup.txt"), []byte("sub\n"), 0o600); err != nil {
+						t.Fatal(err)
+					}
+				},
+				after: func() {
+					gitDir = tmp.gitDir
+				},
+			},
+		},
+		{
+			name: "success at .git skip",
+			fields: fields{
+				repo: &RepoInfo{
+					path:           testutil.RepoPath,
+					ignorePatterns: getPatterns([]string{"cleanup.txt", "dot_git/inside.txt"}),
+					targetPatterns: getPatterns([]string{"cleanup.txt", "dot_git/inside.txt"}),
+				},
+				w: &bytes.Buffer{},
+			},
+			want: want{
+				removed:   []string{"cleanup.txt"},
+				remaining: []string{"dot_git/inside.txt"},
+				output:    []string{"run:", "cleaned", "cleanup.txt"},
+				isError:   false,
+			},
+			hook: hook{
+				before: func() {
+					gitDir = "dot_git"
+					if err := os.WriteFile(filepath.Join(testutil.RepoPath, "cleanup.txt"), []byte("cleanup\n"), 0o600); err != nil {
+						t.Fatal(err)
+					}
+					if err := os.WriteFile(filepath.Join(testutil.RepoPath, "dot_git/inside.txt"), []byte("inside\n"), 0o600); err != nil {
+						t.Fatal(err)
+					}
+				},
+				after: func() {
+					gitDir = tmp.gitDir
+					_ = os.Remove(filepath.Join(testutil.RepoPath, "dot_git/inside.txt"))
+				},
+			},
+		},
+		{
+			name: "success at no match by ignore pattern",
+			fields: fields{
+				repo: &RepoInfo{
+					path:           testutil.RepoPath,
+					ignorePatterns: getPatterns([]string{"other.txt"}),
+					targetPatterns: getPatterns([]string{"notignored.txt"}),
+				},
+				w: &bytes.Buffer{},
+			},
+			want: want{
+				remaining: []string{"notignored.txt"},
+				isError:   false,
+			},
+			hook: hook{
+				before: func() {
+					gitDir = "dot_git"
+					if err := os.WriteFile(filepath.Join(testutil.RepoPath, "notignored.txt"), []byte("data\n"), 0o600); err != nil {
+						t.Fatal(err)
+					}
+				},
+				after: func() {
+					gitDir = tmp.gitDir
+					_ = os.Remove(filepath.Join(testutil.RepoPath, "notignored.txt"))
+				},
+			},
+		},
+		{
+			name: "success at no match by target pattern",
+			fields: fields{
+				repo: &RepoInfo{
+					path:           testutil.RepoPath,
+					ignorePatterns: getPatterns([]string{"nottarget.txt"}),
+					targetPatterns: getPatterns([]string{"other.txt"}),
+				},
+				w: &bytes.Buffer{},
+			},
+			want: want{
+				remaining: []string{"nottarget.txt"},
+				isError:   false,
+			},
+			hook: hook{
+				before: func() {
+					gitDir = "dot_git"
+					if err := os.WriteFile(filepath.Join(testutil.RepoPath, "nottarget.txt"), []byte("data\n"), 0o600); err != nil {
+						t.Fatal(err)
+					}
+				},
+				after: func() {
+					gitDir = tmp.gitDir
+					_ = os.Remove(filepath.Join(testutil.RepoPath, "nottarget.txt"))
+				},
+			},
+		},
+		{
+			name: "success at no matching files",
+			fields: fields{
+				repo: &RepoInfo{
+					path:           testutil.RepoPath,
+					ignorePatterns: getPatterns([]string{"nonexistent.txt"}),
+					targetPatterns: getPatterns([]string{"nonexistent.txt"}),
+				},
+				w: &bytes.Buffer{},
+			},
+			want: want{
+				isError: false,
+			},
+			hook: hook{
+				before: func() {
+					gitDir = "dot_git"
+				},
+				after: func() {
+					gitDir = tmp.gitDir
+				},
+			},
+		},
+		{
+			name: "error at invalid path",
+			fields: fields{
+				repo: &RepoInfo{
+					path:           filepath.Join(testutil.RepoPath, "nonexistent"),
+					ignorePatterns: getPatterns([]string{"*.txt"}),
+					targetPatterns: getPatterns([]string{"*.txt"}),
+				},
+				w: &bytes.Buffer{},
+			},
+			want: want{
+				isError: true,
+			},
+			hook: hook{},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if test.hook.before != nil {
+				test.hook.before()
+			}
+			if test.hook.after != nil {
+				defer test.hook.after()
+			}
+			o := &Operator{
+				repo: test.fields.repo,
+				w:    test.fields.w,
+			}
+			err := o.cleanupFiles()
+			testutil.CheckError(t, err != nil, test.want.isError)
+			for _, f := range test.want.removed {
+				testutil.CheckFileNotExists(t, filepath.Join(o.repo.path, f))
+			}
+			for _, f := range test.want.remaining {
+				testutil.CheckFileExists(t, filepath.Join(o.repo.path, f))
+			}
+			testutil.CheckContains(t, test.fields.w.(*bytes.Buffer).String(), test.want.output)
+		})
+	}
+}
+
 func TestOperator_compareHash(t *testing.T) {
 	type args struct {
 		path   string
