@@ -18,6 +18,9 @@ const (
 	// DefaultRemoteName is the default remote name used when the actual remote name cannot be determined.
 	DefaultRemoteName = "origin"
 
+	// DefaultTempPattern is the default pattern for temporary files and directories.
+	DefaultTempPattern = "ignoresync-temp-*"
+
 	// KeyIDSize is the size of the master key ID in bytes.
 	KeyIDSize = 8
 

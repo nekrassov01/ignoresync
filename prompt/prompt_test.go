@@ -107,7 +107,7 @@ func TestConfirm(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			testutil.SetStdin(t, testutil.CreateTemp(t, "", test.stdin))
+			testutil.SetStdin(t, testutil.CreateTemp(t, test.stdin))
 			buf := &bytes.Buffer{}
 			got, err := Confirm(buf, test.args.label, test.args.msg)
 			testutil.CheckError(t, err != nil, test.want.isError)
@@ -196,7 +196,7 @@ func TestSecret(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			testutil.SetStdin(t, testutil.CreateTemp(t, "", test.stdin))
+			testutil.SetStdin(t, testutil.CreateTemp(t, test.stdin))
 			buf := &bytes.Buffer{}
 			got, err := Secret(buf, test.args.label, test.args.validateFunc)
 			testutil.CheckError(t, err != nil, test.want.isError)
@@ -222,7 +222,7 @@ func Test_readSecret(t *testing.T) {
 		{
 			name: "read line",
 			args: args{
-				f: testutil.CreateTemp(t, "", "secret\n"),
+				f: testutil.CreateTemp(t, "secret\n"),
 			},
 			want: want{
 				value:   "secret",
@@ -232,7 +232,7 @@ func Test_readSecret(t *testing.T) {
 		{
 			name: "read line trims carriage return",
 			args: args{
-				f: testutil.CreateTemp(t, "", "secret\r\n"),
+				f: testutil.CreateTemp(t, "secret\r\n"),
 			},
 			want: want{
 				value:   "secret",
@@ -242,7 +242,7 @@ func Test_readSecret(t *testing.T) {
 		{
 			name: "read line trims carriage return without newline",
 			args: args{
-				f: testutil.CreateTemp(t, "", ""),
+				f: testutil.CreateTemp(t, ""),
 			},
 			want: want{
 				value:   "",
@@ -274,7 +274,7 @@ func Test_isTerminal(t *testing.T) {
 		{
 			name: "regular file is not terminal",
 			args: args{
-				f: testutil.CreateTemp(t, "", "data\n"),
+				f: testutil.CreateTemp(t, "data\n"),
 			},
 			want: want{
 				value: false,

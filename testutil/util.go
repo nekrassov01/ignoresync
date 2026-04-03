@@ -211,12 +211,9 @@ func UnsetAWSProfile(t *testing.T) {
 }
 
 // CreateTemp creates a temporary file with the given input string for testing.
-func CreateTemp(t *testing.T, name, input string) *os.File {
+func CreateTemp(t *testing.T, input string) *os.File {
 	t.Helper()
-	if name == "" {
-		name = "tempfile-*"
-	}
-	f, err := os.CreateTemp(t.TempDir(), name)
+	f, err := os.CreateTemp(t.TempDir(), "ignoresync-test-*")
 	if err != nil {
 		t.Fatal(err)
 	}

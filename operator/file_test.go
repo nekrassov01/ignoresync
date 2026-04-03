@@ -647,7 +647,7 @@ func TestOperator_reportDiff(t *testing.T) {
 					}
 					return abs
 				}(),
-				tmp:    testutil.CreateTemp(t, "", "right\n"),
+				tmp:    testutil.CreateTemp(t, "right\n"),
 				local:  diffInfo{size: 5},
 				remote: diffInfo{size: 6},
 			},
@@ -699,7 +699,7 @@ func TestOperator_reportDiff(t *testing.T) {
 					}
 					return abs
 				}(),
-				tmp:    testutil.CreateTemp(t, "", "\x00\x02\x03"),
+				tmp:    testutil.CreateTemp(t, "\x00\x02\x03"),
 				local:  diffInfo{size: 3},
 				remote: diffInfo{size: 3},
 			},
@@ -720,7 +720,7 @@ func TestOperator_reportDiff(t *testing.T) {
 			args: args{
 				rel:    "missing.txt",
 				abs:    filepath.Join(t.TempDir(), "missing.txt"),
-				tmp:    testutil.CreateTemp(t, "", "left\n"),
+				tmp:    testutil.CreateTemp(t, "left\n"),
 				local:  diffInfo{size: 5},
 				remote: diffInfo{size: 6},
 			},
