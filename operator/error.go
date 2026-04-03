@@ -43,6 +43,12 @@ const (
 
 	// ErrorKindDelete indicates error in object deletion process.
 	ErrorKindDelete
+
+	// ErrorKindCleanup indicates error in cleanup process.
+	ErrorKindCleanup
+
+	// ErrorKindCommand indicates error in command execution process.
+	ErrorKindCommand
 )
 
 // String returns the string representation of the ErrorKind.
@@ -72,6 +78,10 @@ func (k ErrorKind) String() string {
 		return "restore error"
 	case ErrorKindDelete:
 		return "deletion error"
+	case ErrorKindCleanup:
+		return "cleanup error"
+	case ErrorKindCommand:
+		return "command error"
 	default:
 		return "unknown error"
 	}
@@ -146,4 +156,14 @@ func NewRestoreError(err error) error {
 // NewDeleteError constructs a delete error wrapping optional underlying error.
 func NewDeleteError(err error) error {
 	return &Error{Kind: ErrorKindDelete, Err: err}
+}
+
+// NewCleanupError constructs a cleanup error wrapping optional underlying error.
+func NewCleanupError(err error) error {
+	return &Error{Kind: ErrorKindCleanup, Err: err}
+}
+
+// NewCommandError constructs a command error wrapping optional underlying error.
+func NewCommandError(err error) error {
+	return &Error{Kind: ErrorKindCommand, Err: err}
 }

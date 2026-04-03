@@ -100,6 +100,20 @@ func TestErrorKind_String(t *testing.T) {
 			},
 		},
 		{
+			name: "cleanup",
+			kind: ErrorKindCleanup,
+			want: want{
+				value: "cleanup error",
+			},
+		},
+		{
+			name: "command",
+			kind: ErrorKindCommand,
+			want: want{
+				value: "command error",
+			},
+		},
+		{
 			name: "unknown",
 			kind: ErrorKind(256),
 			want: want{
@@ -697,6 +711,96 @@ func TestNewDeleteError(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			err := NewDeleteError(test.args.err)
+			testutil.CheckValue(t, err, test.want.err)
+		})
+	}
+}
+
+func TestNewCleanupError(t *testing.T) {
+	type args struct {
+		err error
+	}
+	type want struct {
+		err error
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			name: "wrapped error",
+			args: args{
+				err: testutil.NewError(),
+			},
+			want: want{
+				err: &Error{
+					Kind: ErrorKindCleanup,
+					Err:  testutil.NewError(),
+				},
+			},
+		},
+		{
+			name: "unwrapped error",
+			args: args{
+				err: nil,
+			},
+			want: want{
+				err: &Error{
+					Kind: ErrorKindCleanup,
+					Err:  nil,
+				},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := NewCleanupError(test.args.err)
+			testutil.CheckValue(t, err, test.want.err)
+		})
+	}
+}
+
+func TestNewCommandError(t *testing.T) {
+	type args struct {
+		err error
+	}
+	type want struct {
+		err error
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			name: "wrapped error",
+			args: args{
+				err: testutil.NewError(),
+			},
+			want: want{
+				err: &Error{
+					Kind: ErrorKindCommand,
+					Err:  testutil.NewError(),
+				},
+			},
+		},
+		{
+			name: "unwrapped error",
+			args: args{
+				err: nil,
+			},
+			want: want{
+				err: &Error{
+					Kind: ErrorKindCommand,
+					Err:  nil,
+				},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := NewCommandError(test.args.err)
 			testutil.CheckValue(t, err, test.want.err)
 		})
 	}
