@@ -12,9 +12,12 @@ const (
 )
 
 var (
-	// keyConf is the key for the AWS config.
-	keyConf = "config"
+	// keyConfig is the key for the AWS config.
+	keyConfig = "config"
 
-	// keyCred is the key for the credential.
-	keyCred = "credential"
+	// keyCredential is the key for the credential.
+	keyCredential = "credential"
+
+	// keyEnviron is the key for the original environment snapshot.
+	keyEnviron = "environ"
 )

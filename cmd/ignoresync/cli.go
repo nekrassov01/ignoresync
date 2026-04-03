@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/nekrassov01/ignoresync"
@@ -105,7 +106,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryGlobal,
 				Before:      before,
 				Action:      check,
-				Flags:       []cli.Flag{loglevel, profile},
+				Flags:       []cli.Flag{loglevel, profile, region},
 			},
 			{
 				Name:        "activate",
@@ -159,7 +160,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryRepository,
 				Before:      before,
 				Action:      push,
-				Flags:       []cli.Flag{loglevel, profile, remote, dryrun},
+				Flags:       []cli.Flag{loglevel, profile, region, remote, dryrun},
 			},
 			{
 				Name:        "pull",
@@ -168,7 +169,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryRepository,
 				Before:      before,
 				Action:      pull,
-				Flags:       []cli.Flag{loglevel, profile, remote, overwrite},
+				Flags:       []cli.Flag{loglevel, profile, region, remote, overwrite},
 			},
 			{
 				Name:        "rm",
@@ -177,7 +178,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryRepository,
 				Before:      before,
 				Action:      rm,
-				Flags:       []cli.Flag{loglevel, profile, remote},
+				Flags:       []cli.Flag{loglevel, profile, region, remote},
 			},
 			{
 				Name:        "set",
@@ -186,7 +187,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryRepository,
 				Before:      before,
 				Action:      set,
-				Flags:       []cli.Flag{loglevel, profile, remote},
+				Flags:       []cli.Flag{loglevel, profile, region, remote},
 			},
 			{
 				Name:        "preview",
@@ -195,7 +196,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryRepository,
 				Before:      before,
 				Action:      preview,
-				Flags:       []cli.Flag{loglevel, profile, remote},
+				Flags:       []cli.Flag{loglevel, profile, region, remote},
 			},
 			{
 				Name:        "rewrap",
@@ -204,13 +205,34 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryRepository,
 				Before:      before,
 				Action:      rewrap,
-				Flags:       []cli.Flag{loglevel, profile, remote},
+				Flags:       []cli.Flag{loglevel, profile, region, remote},
+			},
+			{
+				Name:        "clean",
+				Usage:       "Clean up files in the current repository.",
+				Description: "Clean up files in the current repository. This will only delete files\nthat match the remote target pattern in the local repository.",
+				Category:    categoryRepository,
+				Before:      before,
+				Action:      clean,
+				Flags:       []cli.Flag{loglevel, profile, region, remote},
+			},
+			{
+				Name:        "run",
+				Usage:       "Run command with setup and cleanup.",
+				Description: "Run command with setup and cleanup. Pull the file before execution.\nIf the command completes or is aborted, the pulled file is cleaned up.",
+				Category:    categoryRepository,
+				Before:      before,
+				Action:      run,
+				Flags:       []cli.Flag{loglevel, profile, region, remote},
 			},
 		},
 	}
 }
 
 func before(ctx context.Context, cmd *cli.Command) (context.Context, error) {
+	// Snapshot the original environment before any SDK loading
+	cmd.Metadata[keyEnviron] = os.Environ()
+
 	// Parse log level
 	var level slog.Level
 	if err := level.UnmarshalText([]byte(cmd.String(loglevel.Name))); err != nil {
@@ -254,21 +276,22 @@ func before(ctx context.Context, cmd *cli.Command) (context.Context, error) {
 	}
 
 	// Set metadata for commands
-	cmd.Metadata[keyConf] = cfg
-	cmd.Metadata[keyCred] = cred
+	cmd.Metadata[keyConfig] = cfg
+	cmd.Metadata[keyCredential] = cred
 
 	return ctx, nil
 }
 
 func bootstrap(ctx context.Context, cmd *cli.Command) error {
 	// Check if running in CI mode
-	if cmd.Metadata[keyCred].(string) != "" {
+	if cmd.Metadata[keyCredential].(string) != "" {
 		logger.Warn("ci mode: skip bootstrapping")
 		return nil
 	}
+	logger.Info("bootstrap: starting")
 
 	// Load AWS config
-	cfg := cmd.Metadata[keyConf].(aws.Config)
+	cfg := cmd.Metadata[keyConfig].(aws.Config)
 
 	// Create manager
 	man, err := manager.New(ctx, cmd.Writer, cfg)
@@ -324,12 +347,15 @@ func bootstrap(ctx context.Context, cmd *cli.Command) error {
 	cred := color.Underline(manager.EncodeCredential(id, key))
 	_, _ = fmt.Fprintf(cmd.Writer, "%s store your credential securely: %s\n", pref, cred)
 
+	logger.Info("bootstrap: finished")
 	return nil
 }
 
 func check(ctx context.Context, cmd *cli.Command) error {
+	logger.Info("check: starting")
+
 	// Load AWS config
-	cfg := cmd.Metadata[keyConf].(aws.Config)
+	cfg := cmd.Metadata[keyConfig].(aws.Config)
 
 	// Create manager
 	man, err := manager.New(ctx, cmd.Writer, cfg)
@@ -338,9 +364,12 @@ func check(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Load stored state
-	state, err := man.EnsureState(cmd.Metadata[keyCred].(string))
+	state, err := man.EnsureState(cmd.Metadata[keyCredential].(string))
 	if err != nil {
 		return err
+	}
+	if cmd.String(region.Name) == "" {
+		cfg.Region = state.Region
 	}
 
 	// Check environment
@@ -349,18 +378,20 @@ func check(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
+	logger.Info("check: finished")
 	return nil
 }
 
 func activate(ctx context.Context, cmd *cli.Command) error {
 	// Check if running in CI mode
-	if cmd.Metadata[keyCred].(string) != "" {
+	if cmd.Metadata[keyCredential].(string) != "" {
 		logger.Warn("ci mode: skip activation")
 		return nil
 	}
+	logger.Info("activate: starting")
 
 	// Load AWS config
-	cfg := cmd.Metadata[keyConf].(aws.Config)
+	cfg := cmd.Metadata[keyConfig].(aws.Config)
 
 	// Get credential from user input
 	cred, err := prompt.Secret(cmd.Writer, "enter your credential:", manager.ValidateCredential)
@@ -394,6 +425,9 @@ func activate(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
+	if cmd.String(region.Name) == "" {
+		cfg.Region = state.Region
+	}
 
 	// Create deployer
 	d := env.New(cmd.Writer, cfg)
@@ -413,18 +447,20 @@ func activate(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
+	logger.Info("activate: finished")
 	return nil
 }
 
 func deactivate(ctx context.Context, cmd *cli.Command) error {
 	// Check if running in CI mode
-	if cmd.Metadata[keyCred].(string) != "" {
+	if cmd.Metadata[keyCredential].(string) != "" {
 		logger.Warn("ci mode: skip deactivation")
 		return nil
 	}
+	logger.Info("deactivate: starting")
 
 	// Load AWS config
-	cfg := cmd.Metadata[keyConf].(aws.Config)
+	cfg := cmd.Metadata[keyConfig].(aws.Config)
 
 	// Get credential from user input
 	cred, err := prompt.Secret(cmd.Writer, "enter your credential:", manager.ValidateCredential)
@@ -449,18 +485,20 @@ func deactivate(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
+	logger.Info("deactivate: finished")
 	return nil
 }
 
 func list(ctx context.Context, cmd *cli.Command) error {
 	// Check if running in CI mode
-	if cmd.Metadata[keyCred].(string) != "" {
+	if cmd.Metadata[keyCredential].(string) != "" {
 		logger.Warn("ci mode: skip getting key IDs")
 		return nil
 	}
+	logger.Info("list: starting")
 
 	// Load AWS config
-	cfg := cmd.Metadata[keyConf].(aws.Config)
+	cfg := cmd.Metadata[keyConfig].(aws.Config)
 
 	// Create manager
 	man, err := manager.New(ctx, cmd.Writer, cfg)
@@ -481,18 +519,20 @@ func list(ctx context.Context, cmd *cli.Command) error {
 	}
 	_, _ = fmt.Fprintln(cmd.Writer, string(v))
 
+	logger.Info("list: finished")
 	return nil
 }
 
 func rotate(ctx context.Context, cmd *cli.Command) error {
 	// Check if running in CI mode
-	if cmd.Metadata[keyCred].(string) != "" {
+	if cmd.Metadata[keyCredential].(string) != "" {
 		logger.Warn("ci mode: skip rotation")
 		return nil
 	}
+	logger.Info("rotate: starting")
 
 	// Load AWS config
-	cfg := cmd.Metadata[keyConf].(aws.Config)
+	cfg := cmd.Metadata[keyConfig].(aws.Config)
 
 	// Create manager
 	man, err := manager.New(ctx, cmd.Writer, cfg)
@@ -518,18 +558,20 @@ func rotate(ctx context.Context, cmd *cli.Command) error {
 	_, _ = fmt.Fprintf(cmd.Writer, "%s store your credential securely: %s\n", pref, cred)
 	_, _ = fmt.Fprintln(cmd.Writer, warn)
 
+	logger.Info("rotate: finished")
 	return nil
 }
 
 func leave(ctx context.Context, cmd *cli.Command) error {
 	// Check if running in CI mode
-	if cmd.Metadata[keyCred].(string) != "" {
+	if cmd.Metadata[keyCredential].(string) != "" {
 		logger.Warn("ci mode: skip leaving environment")
 		return nil
 	}
+	logger.Info("leave: starting")
 
 	// Load AWS config
-	cfg := cmd.Metadata[keyConf].(aws.Config)
+	cfg := cmd.Metadata[keyConfig].(aws.Config)
 
 	// Create manager
 	man, err := manager.New(ctx, cmd.Writer, cfg)
@@ -542,12 +584,15 @@ func leave(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
+	logger.Info("leave: finished")
 	return nil
 }
 
 func push(ctx context.Context, cmd *cli.Command) error {
+	logger.Info("push: starting")
+
 	// Load AWS config
-	cfg := cmd.Metadata[keyConf].(aws.Config)
+	cfg := cmd.Metadata[keyConfig].(aws.Config)
 
 	// Create manager
 	man, err := manager.New(ctx, cmd.Writer, cfg)
@@ -556,9 +601,12 @@ func push(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Load stored state
-	state, err := man.EnsureState(cmd.Metadata[keyCred].(string))
+	state, err := man.EnsureState(cmd.Metadata[keyCredential].(string))
 	if err != nil {
 		return err
+	}
+	if cmd.String(region.Name) == "" {
+		cfg.Region = state.Region
 	}
 
 	// Get current working directory
@@ -588,12 +636,15 @@ func push(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
+	logger.Info("push: finished")
 	return nil
 }
 
 func pull(ctx context.Context, cmd *cli.Command) error {
+	logger.Info("pull: starting")
+
 	// Load AWS config
-	cfg := cmd.Metadata[keyConf].(aws.Config)
+	cfg := cmd.Metadata[keyConfig].(aws.Config)
 
 	// Create manager
 	man, err := manager.New(ctx, cmd.Writer, cfg)
@@ -602,9 +653,12 @@ func pull(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Load stored state
-	state, err := man.EnsureState(cmd.Metadata[keyCred].(string))
+	state, err := man.EnsureState(cmd.Metadata[keyCredential].(string))
 	if err != nil {
 		return err
+	}
+	if cmd.String(region.Name) == "" {
+		cfg.Region = state.Region
 	}
 
 	// Get current working directory
@@ -634,12 +688,15 @@ func pull(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
+	logger.Info("pull: finished")
 	return nil
 }
 
 func rm(ctx context.Context, cmd *cli.Command) error {
+	logger.Info("rm: starting")
+
 	// Load AWS config
-	cfg := cmd.Metadata[keyConf].(aws.Config)
+	cfg := cmd.Metadata[keyConfig].(aws.Config)
 
 	// Create manager
 	man, err := manager.New(ctx, cmd.Writer, cfg)
@@ -648,9 +705,12 @@ func rm(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Load stored state
-	state, err := man.EnsureState(cmd.Metadata[keyCred].(string))
+	state, err := man.EnsureState(cmd.Metadata[keyCredential].(string))
 	if err != nil {
 		return err
+	}
+	if cmd.String(region.Name) == "" {
+		cfg.Region = state.Region
 	}
 
 	// Get current working directory
@@ -670,12 +730,21 @@ func rm(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
+	logger.Info("rm: finished")
 	return nil
 }
 
 func set(ctx context.Context, cmd *cli.Command) error {
+	logger.Info("set: starting")
+
+	// Get command arguments
+	arg := cmd.Args().Get(0)
+	if len(arg) == 0 {
+		return nil
+	}
+
 	// Load AWS config
-	cfg := cmd.Metadata[keyConf].(aws.Config)
+	cfg := cmd.Metadata[keyConfig].(aws.Config)
 
 	// Create manager
 	man, err := manager.New(ctx, cmd.Writer, cfg)
@@ -684,9 +753,12 @@ func set(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Load stored state
-	state, err := man.EnsureState(cmd.Metadata[keyCred].(string))
+	state, err := man.EnsureState(cmd.Metadata[keyCredential].(string))
 	if err != nil {
 		return err
+	}
+	if cmd.String(region.Name) == "" {
+		cfg.Region = state.Region
 	}
 
 	// Get current working directory
@@ -703,7 +775,7 @@ func set(ctx context.Context, cmd *cli.Command) error {
 
 	// Parse target patterns
 	var target []string
-	if err := json.Unmarshal([]byte(cmd.Args().Get(0)), &target); err != nil {
+	if err := json.Unmarshal([]byte(arg), &target); err != nil {
 		return err
 	}
 
@@ -715,12 +787,15 @@ func set(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
+	logger.Info("set: finished")
 	return nil
 }
 
 func preview(ctx context.Context, cmd *cli.Command) error {
+	logger.Info("preview: starting")
+
 	// Load AWS config
-	cfg := cmd.Metadata[keyConf].(aws.Config)
+	cfg := cmd.Metadata[keyConfig].(aws.Config)
 
 	// Create manager
 	man, err := manager.New(ctx, cmd.Writer, cfg)
@@ -729,9 +804,12 @@ func preview(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Load stored state
-	state, err := man.EnsureState(cmd.Metadata[keyCred].(string))
+	state, err := man.EnsureState(cmd.Metadata[keyCredential].(string))
 	if err != nil {
 		return err
+	}
+	if cmd.String(region.Name) == "" {
+		cfg.Region = state.Region
 	}
 
 	// Get current working directory
@@ -759,12 +837,15 @@ func preview(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
+	logger.Info("preview: finished")
 	return nil
 }
 
 func rewrap(ctx context.Context, cmd *cli.Command) error {
+	logger.Info("rewrap: starting")
+
 	// Load AWS config
-	cfg := cmd.Metadata[keyConf].(aws.Config)
+	cfg := cmd.Metadata[keyConfig].(aws.Config)
 
 	// Create manager
 	man, err := manager.New(ctx, cmd.Writer, cfg)
@@ -773,9 +854,12 @@ func rewrap(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Load stored state
-	state, err := man.EnsureState(cmd.Metadata[keyCred].(string))
+	state, err := man.EnsureState(cmd.Metadata[keyCredential].(string))
 	if err != nil {
 		return err
+	}
+	if cmd.String(region.Name) == "" {
+		cfg.Region = state.Region
 	}
 
 	// Get current working directory
@@ -795,7 +879,125 @@ func rewrap(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
+	logger.Info("rewrap: finished")
 	return nil
+}
+
+func clean(ctx context.Context, cmd *cli.Command) error {
+	logger.Info("clean: starting")
+
+	// Load AWS config
+	cfg := cmd.Metadata[keyConfig].(aws.Config)
+
+	// Create manager
+	man, err := manager.New(ctx, cmd.Writer, cfg)
+	if err != nil {
+		return err
+	}
+
+	// Load stored state
+	state, err := man.EnsureState(cmd.Metadata[keyCredential].(string))
+	if err != nil {
+		return err
+	}
+	if cmd.String(region.Name) == "" {
+		cfg.Region = state.Region
+	}
+
+	// Get current working directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	// Create operator
+	o, err := operator.New(cmd.Writer, cwd, cmd.String(remote.Name), cfg)
+	if err != nil {
+		return err
+	}
+
+	// Pull remote patterns
+	patterns, err := o.PullPatterns(ctx, state)
+	if err != nil {
+		return err
+	}
+	if len(patterns) > 0 {
+		o.SetPatterns(patterns)
+	}
+
+	// Cleanup files
+	if err := o.CleanupFiles(); err != nil {
+		return err
+	}
+
+	logger.Info("clean: finished")
+	return nil
+}
+
+func run(ctx context.Context, cmd *cli.Command) error {
+	logger.Info("run: starting")
+
+	// Get command arguments
+	args := cmd.Args().Slice()
+	if len(args) == 0 {
+		return nil
+	}
+	command := strings.Join(args, " ")
+
+	// Load AWS config
+	cfg := cmd.Metadata[keyConfig].(aws.Config)
+
+	// Create manager
+	man, err := manager.New(ctx, cmd.Writer, cfg)
+	if err != nil {
+		return err
+	}
+
+	// Load stored state
+	state, err := man.EnsureState(cmd.Metadata[keyCredential].(string))
+	if err != nil {
+		return err
+	}
+	if cmd.String(region.Name) == "" {
+		cfg.Region = state.Region
+	}
+
+	// Get current working directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	// Create operator
+	o, err := operator.New(cmd.Writer, cwd, cmd.String(remote.Name), cfg)
+	if err != nil {
+		return err
+	}
+
+	// Pull remote patterns
+	patterns, err := o.PullPatterns(ctx, state)
+	if err != nil {
+		return err
+	}
+	if len(patterns) > 0 {
+		o.SetPatterns(patterns)
+	}
+
+	// Pull remote files
+	o.SetOverwrite(true)
+	if err := o.PullFiles(ctx, state); err != nil {
+		return err
+	}
+
+	// Ensure cleanup runs on normal exit, error, or signal
+	defer func() {
+		_ = o.CleanupFiles()
+		logger.Info("run: finished")
+	}()
+
+	// Execute command
+	environ := cmd.Metadata[keyEnviron].([]string)
+	return o.Run(command, environ)
 }
 
 // shouldOverwrite sets the overwrite mode based on the command flags and environment.
@@ -803,7 +1005,7 @@ func shouldOverwrite(cmd *cli.Command) bool {
 	if cmd.Bool(overwrite.Name) {
 		return true
 	}
-	if cred := cmd.Metadata[keyCred].(string); cred != "" {
+	if cred := cmd.Metadata[keyCredential].(string); cred != "" {
 		logger.Warn("ci mode: force overwrite enabled")
 		return true
 	}
