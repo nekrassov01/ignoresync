@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/dustin/go-humanize"
 	"github.com/go-git/go-git/v5/plumbing/format/gitignore"
 	"github.com/nekrassov01/ignoresync"
 	"github.com/nekrassov01/ignoresync/color"
@@ -103,7 +102,7 @@ func (o *Operator) bundleFiles() io.ReadCloser {
 			}
 
 			if o.dryrun {
-				o.printStatus("pushed", rel, fi.Size(), "dryrun:")
+				o.printStatus("pushed", rel, fi.Size(), "info (dryrun):")
 				return nil
 			}
 
@@ -143,7 +142,7 @@ func (o *Operator) bundleFile(tw *tar.Writer, rel, abs string) error {
 		return fmt.Errorf("failed to write file to tar: %w", err)
 	}
 
-	o.printStatus("pushed", rel, size, "state:")
+	o.printStatus("pushed", rel, size, "info:")
 	return nil
 }
 
@@ -261,23 +260,23 @@ func (o *Operator) restoreFiles(r io.Reader) error {
 			}
 
 			if sizeEqual && modeEqual && bodyEqual {
-				o.printStatus("no changes", rel, r.size, "state:")
+				o.printStatus("no changes", rel, r.size, "info:")
 				return nil
 			}
 
 			if !bodyEqual {
-				o.printStatus("content changed", rel, r.size, "state:")
+				o.printStatus("content changed", rel, r.size, "info:")
 				if err := o.reportDiff(rel, abs, tmp, l, r); err != nil {
 					return fmt.Errorf("failed to report diff: %w", err)
 				}
 			}
 
 			if !modeEqual {
-				o.printStatus(fmt.Sprintf("mode changed, local=%o, remote=%o", l.mode, r.mode), rel, r.size, "state:")
+				o.printStatus(fmt.Sprintf("mode changed, local=%o, remote=%o", l.mode, r.mode), rel, r.size, "info:")
 			}
 
-			if _, err := prompt.Confirm(o.w, fmt.Sprintf("%s overwrite? %s %s (%s)", color.Mute("state:"), color.Mute("->"), rel, sizeString(r.size)), "skipped"); err != nil {
-				o.printStatus(err.Error(), rel, r.size, "state:")
+			if _, err := prompt.Confirm(o.w, fmt.Sprintf("%s overwrite? %s %s (%s)", color.Mute("info:"), color.Mute("->"), rel, sizeString(r.size)), "skipped"); err != nil {
+				o.printStatus(err.Error(), rel, r.size, "info:")
 				return nil
 			}
 
@@ -317,7 +316,7 @@ func (o *Operator) restoreFile(rel, abs string, tmp *os.File, mode os.FileMode) 
 		return fmt.Errorf("failed to chmod local file: %w", err)
 	}
 
-	o.printStatus("restored", rel, size, "state:")
+	o.printStatus("restored", rel, size, "info:")
 	return nil
 }
 
@@ -381,7 +380,7 @@ func (o *Operator) cleanupFiles() error {
 		}
 
 		if err := os.Remove(path); err == nil {
-			o.printStatus("cleaned", rel, -1, "run:")
+			o.printStatus("cleaned", rel, -1, "info:")
 		}
 
 		return nil
@@ -411,7 +410,7 @@ func (o *Operator) compareHash(path string, remote *diffInfo) (bool, error) {
 // reportDiff generates and displays the diff between the local and remote files.
 func (o *Operator) reportDiff(rel, abs string, tmp *os.File, local, remote diffInfo) error {
 	if local.size > maxDiffSize || remote.size > maxDiffSize {
-		o.printStatus("diff too large, skipping diff", rel, remote.size, "state:")
+		o.printStatus("diff too large, skipping diff", rel, remote.size, "info:")
 		return nil
 	}
 
@@ -429,7 +428,7 @@ func (o *Operator) reportDiff(rel, abs string, tmp *os.File, local, remote diffI
 	}
 
 	if isBinary(lf) || isBinary(rf) {
-		o.printStatus("binary detected, skipping diff", rel, remote.size, "state:")
+		o.printStatus("binary detected, skipping diff", rel, remote.size, "info:")
 		return nil
 	}
 
@@ -457,29 +456,4 @@ func isOutside(path string) bool {
 // isBinary checks if the given data is binary.
 func isBinary(data []byte) bool {
 	return http.DetectContentType(data) == "application/octet-stream"
-}
-
-// printStatus prints the status of the file operation in a formatted manner.
-func (o *Operator) printStatus(msg, path string, size int64, prefix string) {
-	if prefix != "" {
-		_, _ = io.WriteString(o.w, color.Mute(prefix))
-		_, _ = io.WriteString(o.w, " ")
-	}
-	_, _ = io.WriteString(o.w, msg)
-	_, _ = io.WriteString(o.w, color.Mute(" -> "))
-	_, _ = io.WriteString(o.w, path)
-	if size >= 0 {
-		_, _ = io.WriteString(o.w, " (")
-		_, _ = io.WriteString(o.w, sizeString(size))
-		_, _ = io.WriteString(o.w, ")")
-	}
-	_, _ = io.WriteString(o.w, "\n")
-}
-
-// sizeString formats the file size in a human-readable format, handling negative sizes as zero.
-func sizeString(size int64) string {
-	if size < 0 {
-		return humanize.Bytes(0)
-	}
-	return humanize.Bytes(uint64(size))
 }
