@@ -353,12 +353,19 @@ func (o *Operator) restorePatterns(r io.Reader) ([]string, error) {
 }
 
 // cleanupFiles removes all files in the repository that match the ignore and target patterns.
-// This is the inverse of bundleFiles: it walks the same paths and deletes them.
 func (o *Operator) cleanupFiles() error {
 	ignoreMatcher := gitignore.NewMatcher(o.repo.ignorePatterns)
 	targetMatcher := gitignore.NewMatcher(o.repo.targetPatterns)
 
-	err := filepath.WalkDir(o.repo.path, func(path string, d os.DirEntry, walkErr error) error {
+	root, err := os.OpenRoot(o.repo.path)
+	if err != nil {
+		return fmt.Errorf("failed to open root directory: %w", err)
+	}
+	defer func() {
+		_ = root.Close()
+	}()
+
+	return filepath.WalkDir(o.repo.path, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return fmt.Errorf("failed to access local file: %w", walkErr)
 		}
@@ -379,14 +386,12 @@ func (o *Operator) cleanupFiles() error {
 			return nil
 		}
 
-		if err := os.Remove(path); err == nil {
+		if err := root.Remove(rel); err == nil {
 			o.printStatus("cleaned", rel, -1, "clean:")
 		}
 
 		return nil
 	})
-
-	return err
 }
 
 // compareHash compares the SHA-256 hash of the local file with the remote file.
