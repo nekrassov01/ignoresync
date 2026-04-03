@@ -158,7 +158,7 @@ func (o *Manager) StoreState(state *State) error {
 	return nil
 }
 
-// LoadState loads the passed state from the keyring.
+// LoadState loads the state from the keyring.
 // After loading data, verify that the current profile matches the loaded state.
 func (o *Manager) LoadState() (*State, error) {
 	state := &State{}
