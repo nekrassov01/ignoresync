@@ -8,8 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 )
 
-// LoadAWSConfig loads the AWS configuration with the given region and profile.
-func LoadAWSConfig(ctx context.Context, region, profile string) (aws.Config, error) {
+// LoadAWSConfig loads the AWS configuration with the given profile and region.
+func LoadAWSConfig(ctx context.Context, profile, region string) (aws.Config, error) {
 	cfg, err := config.LoadDefaultConfig(ctx,
 		config.WithSharedConfigProfile(profile),
 		config.WithRetryer(NewRetryer),
