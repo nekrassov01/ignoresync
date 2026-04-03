@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/go-git/go-billy/v5/osfs"
@@ -29,8 +30,8 @@ type RepoInfo struct {
 
 // newRepoInfo creates a new RepoInfo by opening the git repository at the given path.
 func newRepoInfo(path, remote string) (*RepoInfo, error) {
-	// Open git repository
-	repo, err := git.PlainOpen(path)
+	// Find repository root
+	repoPath, repo, err := findRepoRoot(path)
 	if err != nil {
 		return nil, NewRepositoryError(fmt.Errorf("failed to open git repository: %w", err))
 	}
@@ -48,7 +49,7 @@ func newRepoInfo(path, remote string) (*RepoInfo, error) {
 	}
 
 	// Load ignore patterns from .gitignore
-	fs := osfs.New(path)
+	fs := osfs.New(repoPath)
 	ignorePatterns, err := gitignore.ReadPatterns(fs, nil)
 	if err != nil {
 		return nil, NewRepositoryError(fmt.Errorf("failed to read ignore patterns: %w", err))
@@ -63,7 +64,7 @@ func newRepoInfo(path, remote string) (*RepoInfo, error) {
 	return &RepoInfo{
 		Name:           name,
 		Hash:           hash,
-		path:           path,
+		path:           repoPath,
 		remote:         remote,
 		user:           user,
 		ignorePatterns: ignorePatterns,
@@ -71,36 +72,19 @@ func newRepoInfo(path, remote string) (*RepoInfo, error) {
 	}, nil
 }
 
-// getPatterns retrieves the target patterns for the repository.
-func getPatterns(patterns []string) []gitignore.Pattern {
-	if len(patterns) == 0 {
-		return nil
+// findRepoRoot walks up from path until a git repository can be opened.
+func findRepoRoot(path string) (string, *git.Repository, error) {
+	cur := path
+	for {
+		if repo, err := git.PlainOpen(cur); err == nil {
+			return cur, repo, nil
+		}
+		parent := filepath.Dir(cur)
+		if parent == cur {
+			return "", nil, fmt.Errorf("no git repository found starting at %s", path)
+		}
+		cur = parent
 	}
-	targetPatterns := make([]gitignore.Pattern, 0, len(patterns))
-	for _, pattern := range patterns {
-		targetPatterns = append(targetPatterns, gitignore.ParsePattern(pattern, nil))
-	}
-	return targetPatterns
-}
-
-// getRepoName extracts the repository name from the given URL.
-// It returns a SHA-256 hash of the service domain and repository path.
-func getRepoName(url string) (string, string, error) {
-	name := strings.TrimSuffix(url, ".git")
-	if i := strings.Index(name, "://"); i >= 0 {
-		name = name[i+3:]
-	}
-	if i := strings.LastIndex(name, "@"); i >= 0 {
-		name = name[i+1:]
-	}
-	name = strings.Replace(name, ":", "/", 1)
-	name = strings.Trim(name, "/")
-	parts := strings.Split(name, "/")
-	if len(parts) < 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
-		return "", "", errors.New("invalid URL")
-	}
-	hash := sha256.Sum256([]byte(name))
-	return name, hex.EncodeToString(hash[:]), nil
 }
 
 // getRemoteURL retrieves the remote URL from the git repository at the given path.
@@ -134,14 +118,36 @@ func getRemoteURL(repo *git.Repository, name string) (string, error) {
 	return "", fmt.Errorf("no valid remote URL found for %q", name)
 }
 
-// getFirstValidURL returns the first non-empty URL from the given list.
-func getFirstValidURL(urls []string) string {
-	for _, url := range urls {
-		if url != "" {
-			return url
-		}
+// getRepoName extracts the repository name from the given URL.
+// It returns a SHA-256 hash of the service domain and repository path.
+func getRepoName(url string) (string, string, error) {
+	name := strings.TrimSuffix(url, ".git")
+	if i := strings.Index(name, "://"); i >= 0 {
+		name = name[i+3:]
 	}
-	return ""
+	if i := strings.LastIndex(name, "@"); i >= 0 {
+		name = name[i+1:]
+	}
+	name = strings.Replace(name, ":", "/", 1)
+	name = strings.Trim(name, "/")
+	parts := strings.Split(name, "/")
+	if len(parts) < 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
+		return "", "", errors.New("invalid URL")
+	}
+	hash := sha256.Sum256([]byte(name))
+	return name, hex.EncodeToString(hash[:]), nil
+}
+
+// getPatterns retrieves the target patterns for the repository.
+func getPatterns(patterns []string) []gitignore.Pattern {
+	if len(patterns) == 0 {
+		return nil
+	}
+	targetPatterns := make([]gitignore.Pattern, 0, len(patterns))
+	for _, pattern := range patterns {
+		targetPatterns = append(targetPatterns, gitignore.ParsePattern(pattern, nil))
+	}
+	return targetPatterns
 }
 
 // getUser retrieves the user name from the git repository or environment variables.
@@ -162,9 +168,19 @@ func getUser(repo *git.Repository) string {
 	}
 
 	// Get user from environment variables
-	if envUser := os.Getenv("GIT_AUTHOR_NAME"); envUser != "" {
-		return envUser
+	if name := os.Getenv("GIT_AUTHOR_NAME"); name != "" {
+		return name
 	}
 
 	return ignoresync.DefaultUserName
+}
+
+// getFirstValidURL returns the first non-empty URL from the given list.
+func getFirstValidURL(urls []string) string {
+	for _, url := range urls {
+		if url != "" {
+			return url
+		}
+	}
+	return ""
 }

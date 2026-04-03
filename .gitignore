@@ -31,6 +31,8 @@ dist/
 *.prof
 **/.env*
 testdata/sandbox/**
+!testdata/sandbox/sub_dir
+!testdata/sandbox/sub_dir/**
 !testdata/sandbox/dot_git
 !testdata/sandbox/dot_git/HEAD
 !testdata/sandbox/dot_git/config

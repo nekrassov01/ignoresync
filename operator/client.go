@@ -3,6 +3,7 @@ package operator
 import (
 	"context"
 	"io"
+	"path/filepath"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
@@ -46,6 +47,7 @@ type Operator struct {
 	repo           *RepoInfo // repository information
 	prefixFiles    string    // s3 prefix for files
 	prefixPatterns string    // s3 prefix for patterns
+	workDir        string    // relative path to the working directory
 	dryrun         bool      // whether to perform a dry run
 	overwrite      bool      // whether to force download even if the same version exists
 	w              io.Writer // writer for output
@@ -62,7 +64,7 @@ func (o *S3) NewTransferManager() *transfermanager.Client {
 }
 
 // New creates a new Operator.
-func New(w io.Writer, repoPath, remoteName string, cfg aws.Config) (*Operator, error) {
+func New(w io.Writer, path, remote string, cfg aws.Config) (*Operator, error) {
 	// Initialize client
 	o := &Operator{
 		s3:  &S3{Client: s3.NewFromConfig(cfg)},
@@ -71,11 +73,18 @@ func New(w io.Writer, repoPath, remoteName string, cfg aws.Config) (*Operator, e
 	}
 
 	// Get repository information
-	repo, err := newRepoInfo(repoPath, remoteName)
+	repo, err := newRepoInfo(path, remote)
 	if err != nil {
 		return nil, err
 	}
 	o.repo = repo
+
+	// Get working directory relative to the repository root
+	if rel, err := filepath.Rel(o.repo.path, path); err == nil {
+		o.workDir = rel
+	} else {
+		o.workDir = "."
+	}
 
 	// Build S3 prefixes based on repository name
 	b := newPrefixBuilder(o.repo.Hash)

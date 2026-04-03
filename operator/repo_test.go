@@ -2,6 +2,7 @@ package operator
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/go-git/go-git/v5"
@@ -11,7 +12,7 @@ import (
 	"github.com/nekrassov01/ignoresync/testutil"
 )
 
-func TestNewRepoInfo(t *testing.T) {
+func Test_newRepoInfo(t *testing.T) {
 	type args struct {
 		path   string
 		remote string
@@ -132,103 +133,97 @@ func TestNewRepoInfo(t *testing.T) {
 	}
 }
 
-func Test_getPatterns(t *testing.T) {
+func Test_findRepoRoot(t *testing.T) {
 	type args struct {
-		patterns []string
+		path string
 	}
 	type want struct {
-		patterns []gitignore.Pattern
-	}
-	tests := []struct {
-		name string
-		args args
-		want want
-	}{
-		{
-			name: "basic",
-			args: args{
-				patterns: []string{"**/.env*"},
-			},
-			want: want{
-				patterns: []gitignore.Pattern{gitignore.ParsePattern("**/.env*", nil)},
-			},
-		},
-		{
-			name: "empty",
-			args: args{
-				patterns: []string{},
-			},
-			want: want{
-				patterns: nil,
-			},
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			got := getPatterns(test.args.patterns)
-			testutil.CheckValue(t, got, test.want.patterns)
-		})
-	}
-}
-
-func Test_getRepoName(t *testing.T) {
-	type args struct {
-		url string
-	}
-	type want struct {
-		name    string
-		hash    string
+		dir     string
 		isError bool
 	}
+	type hook struct {
+		before func()
+		after  func()
+	}
 	tests := []struct {
 		name string
 		args args
 		want want
+		hook hook
 	}{
 		{
-			name: "https",
+			name: "repo root",
 			args: args{
-				url: "https://example.com/user/repo.git",
+				path: testutil.RepoPath,
 			},
 			want: want{
-				name:    "example.com/user/repo",
-				hash:    "5183e9f557bef70c519171a4693b10f979fe3eb562eaa83e4090419ca82bbef5",
+				dir:     testutil.RepoPath,
 				isError: false,
+			},
+			hook: hook{
+				before: func() {
+					err := os.Rename(testutil.GitDir["before"], testutil.GitDir["after"])
+					if err != nil {
+						t.Fatal(err)
+					}
+				},
+				after: func() {
+					err := os.Rename(testutil.GitDir["after"], testutil.GitDir["before"])
+					if err != nil {
+						t.Fatal(err)
+					}
+				},
 			},
 		},
 		{
-			name: "ssh",
+			name: "sub directory",
 			args: args{
-				url: "git@example.com:user/repo.git",
+				path: filepath.Join(testutil.RepoPath, "sub_dir"),
 			},
 			want: want{
-				name:    "example.com/user/repo",
-				hash:    "5183e9f557bef70c519171a4693b10f979fe3eb562eaa83e4090419ca82bbef5",
+				dir:     testutil.RepoPath,
 				isError: false,
+			},
+			hook: hook{
+				before: func() {
+					err := os.Rename(testutil.GitDir["before"], testutil.GitDir["after"])
+					if err != nil {
+						t.Fatal(err)
+					}
+				},
+				after: func() {
+					err := os.Rename(testutil.GitDir["after"], testutil.GitDir["before"])
+					if err != nil {
+						t.Fatal(err)
+					}
+				},
 			},
 		},
 		{
-			name: "invalid",
+			name: "no repo",
 			args: args{
-				url: "example.com",
+				path: t.TempDir(),
 			},
 			want: want{
-				name:    "",
-				hash:    "",
+				dir:     "",
 				isError: true,
 			},
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			name, hash, err := getRepoName(test.args.url)
+			if test.hook.before != nil {
+				test.hook.before()
+			}
+			if test.hook.after != nil {
+				defer test.hook.after()
+			}
+			dir, _, err := findRepoRoot(test.args.path)
 			testutil.CheckError(t, err != nil, test.want.isError)
-			testutil.CheckValue(t, name, test.want.name)
-			testutil.CheckValue(t, hash, test.want.hash)
+			testutil.CheckValue(t, dir, test.want.dir)
 		})
 	}
 }
-
 func Test_getRemoteURL(t *testing.T) {
 	type args struct {
 		repo *git.Repository
@@ -395,6 +390,103 @@ func Test_getRemoteURL(t *testing.T) {
 			got, err := getRemoteURL(test.args.repo, test.args.name)
 			testutil.CheckError(t, err != nil, test.want.isError)
 			testutil.CheckValue(t, got, test.want.value)
+		})
+	}
+}
+
+func Test_getRepoName(t *testing.T) {
+	type args struct {
+		url string
+	}
+	type want struct {
+		name    string
+		hash    string
+		isError bool
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			name: "https",
+			args: args{
+				url: "https://example.com/user/repo.git",
+			},
+			want: want{
+				name:    "example.com/user/repo",
+				hash:    "5183e9f557bef70c519171a4693b10f979fe3eb562eaa83e4090419ca82bbef5",
+				isError: false,
+			},
+		},
+		{
+			name: "ssh",
+			args: args{
+				url: "git@example.com:user/repo.git",
+			},
+			want: want{
+				name:    "example.com/user/repo",
+				hash:    "5183e9f557bef70c519171a4693b10f979fe3eb562eaa83e4090419ca82bbef5",
+				isError: false,
+			},
+		},
+		{
+			name: "invalid",
+			args: args{
+				url: "example.com",
+			},
+			want: want{
+				name:    "",
+				hash:    "",
+				isError: true,
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			name, hash, err := getRepoName(test.args.url)
+			testutil.CheckError(t, err != nil, test.want.isError)
+			testutil.CheckValue(t, name, test.want.name)
+			testutil.CheckValue(t, hash, test.want.hash)
+		})
+	}
+}
+
+func Test_getPatterns(t *testing.T) {
+	type args struct {
+		patterns []string
+	}
+	type want struct {
+		patterns []gitignore.Pattern
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			name: "basic",
+			args: args{
+				patterns: []string{"**/.env*"},
+			},
+			want: want{
+				patterns: []gitignore.Pattern{gitignore.ParsePattern("**/.env*", nil)},
+			},
+		},
+		{
+			name: "empty",
+			args: args{
+				patterns: []string{},
+			},
+			want: want{
+				patterns: nil,
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := getPatterns(test.args.patterns)
+			testutil.CheckValue(t, got, test.want.patterns)
 		})
 	}
 }
