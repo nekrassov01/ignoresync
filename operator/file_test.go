@@ -121,7 +121,7 @@ func TestOperator_bundleFiles(t *testing.T) {
 			},
 			want: want{
 				files:   map[string]string{},
-				output:  []string{"dryrun:", "pushed", "dryrun.txt (7 B)"},
+				output:  []string{"push (dryrun):", "uploaded", "dryrun.txt (7 B)"},
 				isError: false,
 			},
 			hook: hook{
@@ -353,7 +353,7 @@ func TestOperator_restoreFiles(t *testing.T) {
 				rel:     "./restored.txt",
 				body:    []byte("restored\n"),
 				mode:    0o640,
-				output:  []string{"state:", "restored", "restored.txt (9 B)"},
+				output:  []string{"restored", "restored.txt (9 B)"},
 				isError: false,
 			},
 		},
@@ -372,7 +372,7 @@ func TestOperator_restoreFiles(t *testing.T) {
 				rel:     "./preview.txt",
 				body:    nil,
 				mode:    0,
-				output:  []string{"preview:", "file", "preview.txt (8 B)"},
+				output:  []string{"preview", "preview.txt (8 B)"},
 				isError: false,
 			},
 		},
@@ -498,7 +498,7 @@ func TestOperator_restorePatterns(t *testing.T) {
 			},
 			want: want{
 				patterns:   []string{".env", "config/*.yml"},
-				output:     []string{"preview:", "pattern", ".env", "config/*.yml"},
+				output:     []string{"pattern", ".env", "config/*.yml"},
 				matches:    [][]string{{"before.txt"}},
 				mismatches: [][]string{{".env"}, {"config", "app.yml"}},
 				isError:    false,
@@ -580,7 +580,7 @@ func TestOperator_cleanupFiles(t *testing.T) {
 			},
 			want: want{
 				removed: []string{"cleanup.txt"},
-				output:  []string{"run:", "cleaned", "cleanup.txt"},
+				output:  []string{"clean:", "cleaned", "cleanup.txt"},
 				isError: false,
 			},
 			hook: hook{
@@ -607,7 +607,7 @@ func TestOperator_cleanupFiles(t *testing.T) {
 			},
 			want: want{
 				removed: []string{"multi-1.txt", "multi-2.txt"},
-				output:  []string{"run:", "cleaned", "multi-1.txt", "multi-2.txt"},
+				output:  []string{"clean:", "cleaned", "multi-1.txt", "multi-2.txt"},
 				isError: false,
 			},
 			hook: hook{
@@ -637,7 +637,7 @@ func TestOperator_cleanupFiles(t *testing.T) {
 			},
 			want: want{
 				removed: []string{"sub_dir/cleanup.txt"},
-				output:  []string{"run:", "cleaned", "sub_dir/cleanup.txt"},
+				output:  []string{"clean:", "cleaned", "sub_dir/cleanup.txt"},
 				isError: false,
 			},
 			hook: hook{
@@ -665,7 +665,7 @@ func TestOperator_cleanupFiles(t *testing.T) {
 			want: want{
 				removed:   []string{"cleanup.txt"},
 				remaining: []string{"dot_git/inside.txt"},
-				output:    []string{"run:", "cleaned", "cleanup.txt"},
+				output:    []string{"clean:", "cleaned", "cleanup.txt"},
 				isError:   false,
 			},
 			hook: hook{
@@ -936,7 +936,7 @@ func TestOperator_reportDiff(t *testing.T) {
 			},
 			want: want{
 				values: []string{
-					"state",
+					"pull:",
 					"diff too large, skipping diff",
 					"file.txt (4 B)",
 				},
@@ -963,7 +963,7 @@ func TestOperator_reportDiff(t *testing.T) {
 			},
 			want: want{
 				values: []string{
-					"state:",
+					"pull:",
 					"binary detected, skipping diff",
 					"file.bin (3 B)",
 				},

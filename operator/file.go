@@ -102,7 +102,7 @@ func (o *Operator) bundleFiles() io.ReadCloser {
 			}
 
 			if o.dryrun {
-				o.printStatus("pushed", rel, fi.Size(), "info (dryrun):")
+				o.printStatus("uploaded", rel, fi.Size(), "push (dryrun):")
 				return nil
 			}
 
@@ -142,7 +142,7 @@ func (o *Operator) bundleFile(tw *tar.Writer, rel, abs string) error {
 		return fmt.Errorf("failed to write file to tar: %w", err)
 	}
 
-	o.printStatus("pushed", rel, size, "info:")
+	o.printStatus("uploaded", rel, size, "push:")
 	return nil
 }
 
@@ -260,23 +260,23 @@ func (o *Operator) restoreFiles(r io.Reader) error {
 			}
 
 			if sizeEqual && modeEqual && bodyEqual {
-				o.printStatus("no changes", rel, r.size, "info:")
+				o.printStatus("no changes", rel, r.size, "pull:")
 				return nil
 			}
 
 			if !bodyEqual {
-				o.printStatus("content changed", rel, r.size, "info:")
+				o.printStatus("content changed", rel, r.size, "pull:")
 				if err := o.reportDiff(rel, abs, tmp, l, r); err != nil {
 					return fmt.Errorf("failed to report diff: %w", err)
 				}
 			}
 
 			if !modeEqual {
-				o.printStatus(fmt.Sprintf("mode changed, local=%o, remote=%o", l.mode, r.mode), rel, r.size, "info:")
+				o.printStatus(fmt.Sprintf("mode changed, local=%o, remote=%o", l.mode, r.mode), rel, r.size, "pull:")
 			}
 
-			if _, err := prompt.Confirm(o.w, fmt.Sprintf("%s overwrite? %s %s (%s)", color.Mute("info:"), color.Mute("->"), rel, sizeString(r.size)), "skipped"); err != nil {
-				o.printStatus(err.Error(), rel, r.size, "info:")
+			if _, err := prompt.Confirm(o.w, fmt.Sprintf("%s overwrite? %s %s (%s)", color.Mute("pull:"), color.Mute("->"), rel, sizeString(r.size)), "skipped"); err != nil {
+				o.printStatus(err.Error(), rel, r.size, "pull:")
 				return nil
 			}
 
@@ -316,7 +316,7 @@ func (o *Operator) restoreFile(rel, abs string, tmp *os.File, mode os.FileMode) 
 		return fmt.Errorf("failed to chmod local file: %w", err)
 	}
 
-	o.printStatus("restored", rel, size, "info:")
+	o.printStatus("restored", rel, size, "pull:")
 	return nil
 }
 
@@ -380,7 +380,7 @@ func (o *Operator) cleanupFiles() error {
 		}
 
 		if err := os.Remove(path); err == nil {
-			o.printStatus("cleaned", rel, -1, "info:")
+			o.printStatus("cleaned", rel, -1, "clean:")
 		}
 
 		return nil
@@ -410,7 +410,7 @@ func (o *Operator) compareHash(path string, remote *diffInfo) (bool, error) {
 // reportDiff generates and displays the diff between the local and remote files.
 func (o *Operator) reportDiff(rel, abs string, tmp *os.File, local, remote diffInfo) error {
 	if local.size > maxDiffSize || remote.size > maxDiffSize {
-		o.printStatus("diff too large, skipping diff", rel, remote.size, "info:")
+		o.printStatus("diff too large, skipping diff", rel, remote.size, "pull:")
 		return nil
 	}
 
@@ -428,7 +428,7 @@ func (o *Operator) reportDiff(rel, abs string, tmp *os.File, local, remote diffI
 	}
 
 	if isBinary(lf) || isBinary(rf) {
-		o.printStatus("binary detected, skipping diff", rel, remote.size, "info:")
+		o.printStatus("binary detected, skipping diff", rel, remote.size, "pull:")
 		return nil
 	}
 
