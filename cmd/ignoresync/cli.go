@@ -106,7 +106,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryGlobal,
 				Before:      before,
 				Action:      check,
-				Flags:       []cli.Flag{loglevel, profile, region},
+				Flags:       []cli.Flag{loglevel, profile},
 			},
 			{
 				Name:        "activate",
@@ -115,7 +115,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryLocal,
 				Before:      before,
 				Action:      activate,
-				Flags:       []cli.Flag{loglevel, profile, region},
+				Flags:       []cli.Flag{loglevel, profile},
 			},
 			{
 				Name:        "deactivate",
@@ -124,7 +124,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryLocal,
 				Before:      before,
 				Action:      deactivate,
-				Flags:       []cli.Flag{loglevel, profile, region},
+				Flags:       []cli.Flag{loglevel, profile},
 			},
 			{
 				Name:        "list",
@@ -133,7 +133,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryLocal,
 				Before:      before,
 				Action:      list,
-				Flags:       []cli.Flag{loglevel, profile, region},
+				Flags:       []cli.Flag{loglevel, profile},
 			},
 			{
 				Name:        "rotate",
@@ -142,7 +142,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryLocal,
 				Before:      before,
 				Action:      rotate,
-				Flags:       []cli.Flag{loglevel, profile, region},
+				Flags:       []cli.Flag{loglevel, profile},
 			},
 			{
 				Name:        "leave",
@@ -151,7 +151,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryLocal,
 				Before:      before,
 				Action:      leave,
-				Flags:       []cli.Flag{loglevel, profile, region},
+				Flags:       []cli.Flag{loglevel, profile},
 			},
 			{
 				Name:        "push",
@@ -160,7 +160,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryRepository,
 				Before:      before,
 				Action:      push,
-				Flags:       []cli.Flag{loglevel, profile, region, remote, dryrun},
+				Flags:       []cli.Flag{loglevel, profile, remote, dryrun},
 			},
 			{
 				Name:        "pull",
@@ -169,7 +169,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryRepository,
 				Before:      before,
 				Action:      pull,
-				Flags:       []cli.Flag{loglevel, profile, region, remote, overwrite},
+				Flags:       []cli.Flag{loglevel, profile, remote, overwrite},
 			},
 			{
 				Name:        "rm",
@@ -178,7 +178,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryRepository,
 				Before:      before,
 				Action:      rm,
-				Flags:       []cli.Flag{loglevel, profile, region, remote},
+				Flags:       []cli.Flag{loglevel, profile, remote},
 			},
 			{
 				Name:        "set",
@@ -187,7 +187,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryRepository,
 				Before:      before,
 				Action:      set,
-				Flags:       []cli.Flag{loglevel, profile, region, remote},
+				Flags:       []cli.Flag{loglevel, profile, remote},
 			},
 			{
 				Name:        "preview",
@@ -196,7 +196,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryRepository,
 				Before:      before,
 				Action:      preview,
-				Flags:       []cli.Flag{loglevel, profile, region, remote},
+				Flags:       []cli.Flag{loglevel, profile, remote},
 			},
 			{
 				Name:        "rewrap",
@@ -205,7 +205,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryRepository,
 				Before:      before,
 				Action:      rewrap,
-				Flags:       []cli.Flag{loglevel, profile, region, remote},
+				Flags:       []cli.Flag{loglevel, profile, remote},
 			},
 			{
 				Name:        "clean",
@@ -214,7 +214,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryRepository,
 				Before:      before,
 				Action:      clean,
-				Flags:       []cli.Flag{loglevel, profile, region, remote},
+				Flags:       []cli.Flag{loglevel, profile, remote},
 			},
 			{
 				Name:        "run",
@@ -253,7 +253,7 @@ func before(ctx context.Context, cmd *cli.Command) (context.Context, error) {
 	))
 
 	// Load AWS config with the specified profile and region
-	cfg, err := config.LoadAWSConfig(ctx, cmd.String(region.Name), cmd.String(profile.Name))
+	cfg, err := config.LoadAWSConfig(ctx, cmd.String(profile.Name), cmd.String(region.Name))
 	if err != nil {
 		return nil, err
 	}
@@ -368,9 +368,7 @@ func check(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	if cmd.String(region.Name) == "" {
-		cfg.Region = state.Region
-	}
+	cfg.Region = state.Region
 
 	// Check environment
 	c := health.New(cmd.Writer, cfg)
@@ -424,9 +422,6 @@ func activate(ctx context.Context, cmd *cli.Command) error {
 	state, err := man.GenerateState(id, key)
 	if err != nil {
 		return err
-	}
-	if cmd.String(region.Name) == "" {
-		cfg.Region = state.Region
 	}
 
 	// Create deployer
@@ -605,9 +600,7 @@ func push(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	if cmd.String(region.Name) == "" {
-		cfg.Region = state.Region
-	}
+	cfg.Region = state.Region
 
 	// Get current working directory
 	cwd, err := os.Getwd()
@@ -657,9 +650,7 @@ func pull(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	if cmd.String(region.Name) == "" {
-		cfg.Region = state.Region
-	}
+	cfg.Region = state.Region
 
 	// Get current working directory
 	cwd, err := os.Getwd()
@@ -709,9 +700,7 @@ func rm(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	if cmd.String(region.Name) == "" {
-		cfg.Region = state.Region
-	}
+	cfg.Region = state.Region
 
 	// Get current working directory
 	cwd, err := os.Getwd()
@@ -757,9 +746,7 @@ func set(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	if cmd.String(region.Name) == "" {
-		cfg.Region = state.Region
-	}
+	cfg.Region = state.Region
 
 	// Get current working directory
 	cwd, err := os.Getwd()
@@ -808,9 +795,7 @@ func preview(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	if cmd.String(region.Name) == "" {
-		cfg.Region = state.Region
-	}
+	cfg.Region = state.Region
 
 	// Get current working directory
 	cwd, err := os.Getwd()
@@ -858,9 +843,7 @@ func rewrap(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	if cmd.String(region.Name) == "" {
-		cfg.Region = state.Region
-	}
+	cfg.Region = state.Region
 
 	// Get current working directory
 	cwd, err := os.Getwd()
@@ -900,9 +883,7 @@ func clean(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	if cmd.String(region.Name) == "" {
-		cfg.Region = state.Region
-	}
+	cfg.Region = state.Region
 
 	// Get current working directory
 	cwd, err := os.Getwd()
@@ -958,6 +939,8 @@ func run(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
+
+	// Set region from state if not specified in flags
 	if cmd.String(region.Name) == "" {
 		cfg.Region = state.Region
 	}
