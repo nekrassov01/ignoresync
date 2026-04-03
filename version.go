@@ -3,7 +3,7 @@ package ignoresync
 import "fmt"
 
 // version is the current version.
-const version = "0.0.3"
+const version = "0.0.4"
 
 // revision is the git revision.
 var revision = ""
