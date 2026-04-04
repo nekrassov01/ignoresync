@@ -35,7 +35,7 @@ type Error struct {
 
 // Error returns the string representation of the prompt error.
 func (e *Error) Error() string {
-	return ignoresync.NewError("prompt", e.Kind.String(), e.Err).Error()
+	return ignoresync.FormatError("prompt", e.Kind.String(), e.Err)
 }
 
 // Unwrap returns the underlying error of the prompt error.

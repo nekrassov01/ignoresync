@@ -50,7 +50,7 @@ type Error struct {
 
 // Error returns the string representation of the error.
 func (e *Error) Error() string {
-	return ignoresync.NewError("healthchecker", e.Kind.String(), e.Err).Error()
+	return ignoresync.FormatError("healthchecker", e.Kind.String(), e.Err)
 }
 
 // Unwrap returns the underlying error of the error.
