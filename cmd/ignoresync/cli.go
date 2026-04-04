@@ -594,34 +594,8 @@ func leave(ctx context.Context, cmd *cli.Command) error {
 func push(ctx context.Context, cmd *cli.Command) error {
 	logger.Info("push: starting")
 
-	// Load AWS config
-	cfg := cmd.Metadata[keyConfig].(aws.Config)
-
-	// Create manager
-	man, err := manager.New(ctx, cmd.Writer, cfg)
-	if err != nil {
-		return err
-	}
-
-	// Load stored state
-	state, err := man.EnsureState(cmd.Metadata[keyCredential].(string))
-	if err != nil {
-		return err
-	}
-
-	// Set region from state if not specified in flags
-	if cmd.String(region.Name) == "" {
-		cfg.Region = state.Region
-	}
-
-	// Get current working directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
-	// Create operator
-	o, err := operator.New(cmd.Writer, cwd, cmd.String(remote.Name), cfg)
+	// Create operator and load state
+	state, o, err := newOperator(ctx, cmd)
 	if err != nil {
 		return err
 	}
@@ -648,34 +622,8 @@ func push(ctx context.Context, cmd *cli.Command) error {
 func pull(ctx context.Context, cmd *cli.Command) error {
 	logger.Info("pull: starting")
 
-	// Load AWS config
-	cfg := cmd.Metadata[keyConfig].(aws.Config)
-
-	// Create manager
-	man, err := manager.New(ctx, cmd.Writer, cfg)
-	if err != nil {
-		return err
-	}
-
-	// Load stored state
-	state, err := man.EnsureState(cmd.Metadata[keyCredential].(string))
-	if err != nil {
-		return err
-	}
-
-	// Set region from state if not specified in flags
-	if cmd.String(region.Name) == "" {
-		cfg.Region = state.Region
-	}
-
-	// Get current working directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
-	// Create operator
-	o, err := operator.New(cmd.Writer, cwd, cmd.String(remote.Name), cfg)
+	// Create operator and load state
+	state, o, err := newOperator(ctx, cmd)
 	if err != nil {
 		return err
 	}
@@ -702,34 +650,8 @@ func pull(ctx context.Context, cmd *cli.Command) error {
 func rm(ctx context.Context, cmd *cli.Command) error {
 	logger.Info("rm: starting")
 
-	// Load AWS config
-	cfg := cmd.Metadata[keyConfig].(aws.Config)
-
-	// Create manager
-	man, err := manager.New(ctx, cmd.Writer, cfg)
-	if err != nil {
-		return err
-	}
-
-	// Load stored state
-	state, err := man.EnsureState(cmd.Metadata[keyCredential].(string))
-	if err != nil {
-		return err
-	}
-
-	// Set region from state if not specified in flags
-	if cmd.String(region.Name) == "" {
-		cfg.Region = state.Region
-	}
-
-	// Get current working directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
-	// Create operator
-	o, err := operator.New(cmd.Writer, cwd, cmd.String(remote.Name), cfg)
+	// Create operator and load state
+	state, o, err := newOperator(ctx, cmd)
 	if err != nil {
 		return err
 	}
@@ -752,34 +674,8 @@ func set(ctx context.Context, cmd *cli.Command) error {
 		return nil
 	}
 
-	// Load AWS config
-	cfg := cmd.Metadata[keyConfig].(aws.Config)
-
-	// Create manager
-	man, err := manager.New(ctx, cmd.Writer, cfg)
-	if err != nil {
-		return err
-	}
-
-	// Load stored state
-	state, err := man.EnsureState(cmd.Metadata[keyCredential].(string))
-	if err != nil {
-		return err
-	}
-
-	// Set region from state if not specified in flags
-	if cmd.String(region.Name) == "" {
-		cfg.Region = state.Region
-	}
-
-	// Get current working directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
-	// Create operator
-	o, err := operator.New(cmd.Writer, cwd, cmd.String(remote.Name), cfg)
+	// Create operator and load state
+	state, o, err := newOperator(ctx, cmd)
 	if err != nil {
 		return err
 	}
@@ -805,34 +701,8 @@ func set(ctx context.Context, cmd *cli.Command) error {
 func preview(ctx context.Context, cmd *cli.Command) error {
 	logger.Info("preview: starting")
 
-	// Load AWS config
-	cfg := cmd.Metadata[keyConfig].(aws.Config)
-
-	// Create manager
-	man, err := manager.New(ctx, cmd.Writer, cfg)
-	if err != nil {
-		return err
-	}
-
-	// Load stored state
-	state, err := man.EnsureState(cmd.Metadata[keyCredential].(string))
-	if err != nil {
-		return err
-	}
-
-	// Set region from state if not specified in flags
-	if cmd.String(region.Name) == "" {
-		cfg.Region = state.Region
-	}
-
-	// Get current working directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
-	// Create operator
-	o, err := operator.New(cmd.Writer, cwd, cmd.String(remote.Name), cfg)
+	// Create operator and load state
+	state, o, err := newOperator(ctx, cmd)
 	if err != nil {
 		return err
 	}
@@ -857,34 +727,8 @@ func preview(ctx context.Context, cmd *cli.Command) error {
 func rewrap(ctx context.Context, cmd *cli.Command) error {
 	logger.Info("rewrap: starting")
 
-	// Load AWS config
-	cfg := cmd.Metadata[keyConfig].(aws.Config)
-
-	// Create manager
-	man, err := manager.New(ctx, cmd.Writer, cfg)
-	if err != nil {
-		return err
-	}
-
-	// Load stored state
-	state, err := man.EnsureState(cmd.Metadata[keyCredential].(string))
-	if err != nil {
-		return err
-	}
-
-	// Set region from state if not specified in flags
-	if cmd.String(region.Name) == "" {
-		cfg.Region = state.Region
-	}
-
-	// Get current working directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
-	// Create operator
-	o, err := operator.New(cmd.Writer, cwd, cmd.String(remote.Name), cfg)
+	// Create operator and load state
+	state, o, err := newOperator(ctx, cmd)
 	if err != nil {
 		return err
 	}
@@ -901,34 +745,8 @@ func rewrap(ctx context.Context, cmd *cli.Command) error {
 func clean(ctx context.Context, cmd *cli.Command) error {
 	logger.Info("clean: starting")
 
-	// Load AWS config
-	cfg := cmd.Metadata[keyConfig].(aws.Config)
-
-	// Create manager
-	man, err := manager.New(ctx, cmd.Writer, cfg)
-	if err != nil {
-		return err
-	}
-
-	// Load stored state
-	state, err := man.EnsureState(cmd.Metadata[keyCredential].(string))
-	if err != nil {
-		return err
-	}
-
-	// Set region from state if not specified in flags
-	if cmd.String(region.Name) == "" {
-		cfg.Region = state.Region
-	}
-
-	// Get current working directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
-	// Create operator
-	o, err := operator.New(cmd.Writer, cwd, cmd.String(remote.Name), cfg)
+	// Create operator and load state
+	state, o, err := newOperator(ctx, cmd)
 	if err != nil {
 		return err
 	}
@@ -961,34 +779,8 @@ func run(ctx context.Context, cmd *cli.Command) error {
 	}
 	command := strings.Join(args, " ")
 
-	// Load AWS config
-	cfg := cmd.Metadata[keyConfig].(aws.Config)
-
-	// Create manager
-	man, err := manager.New(ctx, cmd.Writer, cfg)
-	if err != nil {
-		return err
-	}
-
-	// Load stored state
-	state, err := man.EnsureState(cmd.Metadata[keyCredential].(string))
-	if err != nil {
-		return err
-	}
-
-	// Set region from state if not specified in flags
-	if cmd.String(region.Name) == "" {
-		cfg.Region = state.Region
-	}
-
-	// Get current working directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
-	// Create operator
-	o, err := operator.New(cmd.Writer, cwd, cmd.String(remote.Name), cfg)
+	// Create operator and load state
+	state, o, err := newOperator(ctx, cmd)
 	if err != nil {
 		return err
 	}
@@ -1017,6 +809,43 @@ func run(ctx context.Context, cmd *cli.Command) error {
 	// Execute command
 	environ := cmd.Metadata[keyEnviron].([]string)
 	return o.Run(ctx, command, environ)
+}
+
+// newOperator creates a new operator and loads the state from the keyring.
+func newOperator(ctx context.Context, cmd *cli.Command) (*manager.State, *operator.Operator, error) {
+	// Load AWS config
+	cfg := cmd.Metadata[keyConfig].(aws.Config)
+
+	// Create manager
+	man, err := manager.New(ctx, cmd.Writer, cfg)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Load stored state
+	state, err := man.EnsureState(cmd.Metadata[keyCredential].(string))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Set region from state if not specified in flags
+	if cmd.String(region.Name) == "" {
+		cfg.Region = state.Region
+	}
+
+	// Get current working directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Create operator
+	o, err := operator.New(cmd.Writer, cwd, cmd.String(remote.Name), cfg)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return state, o, nil
 }
 
 // shouldOverwrite sets the overwrite mode based on the command flags and environment.
