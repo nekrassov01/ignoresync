@@ -49,7 +49,8 @@ func encryptBody(body io.ReadCloser, key []byte, baseNonce []byte, aad []byte, c
 			err = fmt.Errorf("invalid chunk size: %d", chunkSize)
 			return
 		}
-		buf := make([]byte, chunkSize)
+		inBuf := make([]byte, chunkSize)
+		outBuf := make([]byte, 0, chunkSize+tagSize)
 		var idx uint32
 		for {
 			// Avoid uint32 overflow of chunk index
@@ -58,7 +59,7 @@ func encryptBody(body io.ReadCloser, key []byte, baseNonce []byte, aad []byte, c
 				return
 			}
 
-			n, readErr := io.ReadFull(body, buf)
+			n, readErr := io.ReadFull(body, inBuf)
 			if errors.Is(readErr, io.EOF) {
 				break
 			}
@@ -69,11 +70,11 @@ func encryptBody(body io.ReadCloser, key []byte, baseNonce []byte, aad []byte, c
 				return
 			}
 
-			plaintext := buf[:n]
+			plaintext := inBuf[:n]
 			var nonce [chunkNonceSize]byte
 			setChunkNonce(&nonce, baseNonce, idx)
 
-			ciphertext := aead.Seal(nil, nonce[:], plaintext, aad)
+			ciphertext := aead.Seal(outBuf[:0], nonce[:], plaintext, aad)
 			if _, err = pw.Write(ciphertext); err != nil {
 				err = fmt.Errorf("failed to write ciphertext chunk: %w", err)
 				return
@@ -124,7 +125,8 @@ func decryptBody(body io.ReadCloser, key []byte, baseNonce []byte, aad []byte, c
 			err = fmt.Errorf("invalid chunk size: %d", chunkSize)
 			return
 		}
-		buf := make([]byte, chunkSize+tagSize)
+		inBuf := make([]byte, chunkSize+tagSize)
+		outBuf := make([]byte, 0, chunkSize)
 		var idx uint32
 		for {
 			// Avoid uint32 overflow of chunk index
@@ -133,7 +135,7 @@ func decryptBody(body io.ReadCloser, key []byte, baseNonce []byte, aad []byte, c
 				return
 			}
 
-			n, readErr := io.ReadFull(body, buf)
+			n, readErr := io.ReadFull(body, inBuf)
 			if errors.Is(readErr, io.EOF) {
 				break
 			}
@@ -148,11 +150,11 @@ func decryptBody(body io.ReadCloser, key []byte, baseNonce []byte, aad []byte, c
 				return
 			}
 
-			ciphertext := buf[:n]
+			ciphertext := inBuf[:n]
 			var nonce [chunkNonceSize]byte
 			setChunkNonce(&nonce, baseNonce, idx)
 
-			plaintext, openErr := aead.Open(nil, nonce[:], ciphertext, aad)
+			plaintext, openErr := aead.Open(outBuf[:0], nonce[:], ciphertext, aad)
 			if openErr != nil {
 				err = fmt.Errorf("failed to decrypt chunk: integrity check failed: %w", openErr)
 				return
@@ -298,9 +300,6 @@ func newGCM(key []byte) (cipher.AEAD, error) {
 // buildAAD constructs a deterministic AAD byte sequence from
 // s3 object prefix, baseNonce, scheme version and purpose.
 func buildAAD(prefix string, purpose string, baseNonce []byte) ([]byte, error) {
-	var buf bytes.Buffer
-	var err error
-
 	// Validate input lengths to prevent overflow
 	// Avoid int overflow on 32bit
 	if n := len(prefix); n == 0 {
@@ -321,41 +320,29 @@ func buildAAD(prefix string, purpose string, baseNonce []byte) ([]byte, error) {
 		return nil, fmt.Errorf("baseNonce is required for purpose: %s", purpose)
 	}
 
+	total := 4 + 4 + len(prefix) + 4 + len(purpose) + 4 + len(baseNonce)
+	var buf bytes.Buffer
+	buf.Grow(total)
+	var tmp [4]byte
+
 	// #nosec G115: Write scheme version first (broadest scope)
-	err = binary.Write(&buf, binary.BigEndian, uint32(schemeVersion))
-	if err != nil {
-		return nil, fmt.Errorf("failed to write scheme version: %w", err)
-	}
+	binary.BigEndian.PutUint32(tmp[:], uint32(schemeVersion))
+	_, _ = buf.Write(tmp[:])
 
 	// #nosec G115: Write prefix length and prefix
-	err = binary.Write(&buf, binary.BigEndian, uint32(len(prefix)))
-	if err != nil {
-		return nil, fmt.Errorf("failed to write prefix length: %w", err)
-	}
-	_, err = buf.WriteString(prefix)
-	if err != nil {
-		return nil, fmt.Errorf("failed to write prefix: %w", err)
-	}
+	binary.BigEndian.PutUint32(tmp[:], uint32(len(prefix)))
+	_, _ = buf.Write(tmp[:])
+	_, _ = buf.WriteString(prefix)
 
 	// #nosec G115: Write purpose length and purpose
-	err = binary.Write(&buf, binary.BigEndian, uint32(len(purpose)))
-	if err != nil {
-		return nil, fmt.Errorf("failed to write purpose length: %w", err)
-	}
-	_, err = buf.WriteString(purpose)
-	if err != nil {
-		return nil, fmt.Errorf("failed to write purpose: %w", err)
-	}
+	binary.BigEndian.PutUint32(tmp[:], uint32(len(purpose)))
+	_, _ = buf.Write(tmp[:])
+	_, _ = buf.WriteString(purpose)
 
 	// #nosec G115: Write baseNonce length and baseNonce (may be zero-length)
-	err = binary.Write(&buf, binary.BigEndian, uint32(len(baseNonce)))
-	if err != nil {
-		return nil, fmt.Errorf("failed to write baseNonce length: %w", err)
-	}
-	_, err = buf.Write(baseNonce)
-	if err != nil {
-		return nil, fmt.Errorf("failed to write baseNonce: %w", err)
-	}
+	binary.BigEndian.PutUint32(tmp[:], uint32(len(baseNonce)))
+	_, _ = buf.Write(tmp[:])
+	_, _ = buf.Write(baseNonce)
 
 	return buf.Bytes(), nil
 }
