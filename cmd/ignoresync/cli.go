@@ -980,7 +980,7 @@ func run(ctx context.Context, cmd *cli.Command) error {
 
 	// Execute command
 	environ := cmd.Metadata[keyEnviron].([]string)
-	return o.Run(command, environ)
+	return o.Run(ctx, command, environ)
 }
 
 // shouldOverwrite sets the overwrite mode based on the command flags and environment.
