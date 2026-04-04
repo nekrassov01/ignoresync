@@ -1,7 +1,6 @@
 package operator
 
 import (
-	"bytes"
 	"testing"
 
 	"github.com/nekrassov01/ignoresync/testutil"
@@ -24,7 +23,6 @@ func Test_newPrefixBuilder(t *testing.T) {
 			args: args{repoHash: "repo"},
 			want: want{
 				value: &prefixBuilder{
-					buf:      &bytes.Buffer{},
 					repoHash: "repo",
 				},
 			},
@@ -34,7 +32,6 @@ func Test_newPrefixBuilder(t *testing.T) {
 			args: args{repoHash: ""},
 			want: want{
 				value: &prefixBuilder{
-					buf:      &bytes.Buffer{},
 					repoHash: "",
 				},
 			},
@@ -43,15 +40,13 @@ func Test_newPrefixBuilder(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			got := newPrefixBuilder(test.args.repoHash)
-			testutil.CheckValue(t, got, test.want.value)
-			testutil.CheckValue(t, got.buf == nil, false)
+			testutil.CheckValue(t, got.repoHash, test.want.value.repoHash)
 		})
 	}
 }
 
 func Test_prefixBuilder_build(t *testing.T) {
 	type fields struct {
-		buf      *bytes.Buffer
 		repoHash string
 	}
 	type args struct {
@@ -69,7 +64,6 @@ func Test_prefixBuilder_build(t *testing.T) {
 		{
 			name: "success",
 			fields: fields{
-				buf:      &bytes.Buffer{},
 				repoHash: "repo",
 			},
 			args: args{
@@ -82,7 +76,6 @@ func Test_prefixBuilder_build(t *testing.T) {
 		{
 			name: "empty name",
 			fields: fields{
-				buf:      &bytes.Buffer{},
 				repoHash: "repo",
 			},
 			args: args{
@@ -95,7 +88,6 @@ func Test_prefixBuilder_build(t *testing.T) {
 		{
 			name: "empty repo name",
 			fields: fields{
-				buf:      &bytes.Buffer{},
 				repoHash: "",
 			},
 			args: args{
@@ -108,7 +100,6 @@ func Test_prefixBuilder_build(t *testing.T) {
 		{
 			name: "reset existing buffer",
 			fields: fields{
-				buf:      bytes.NewBufferString("stale-content"),
 				repoHash: "repo",
 			},
 			args: args{
@@ -122,7 +113,6 @@ func Test_prefixBuilder_build(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			o := &prefixBuilder{
-				buf:      test.fields.buf,
 				repoHash: test.fields.repoHash,
 			}
 			got := o.build(test.args.name)
