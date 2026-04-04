@@ -1,9 +1,5 @@
 package manager
 
-import (
-	"github.com/nekrassov01/ignoresync"
-)
-
 // encryptionContextKey is the key for encryption context.
 const encryptionContextKey = "bucket/key"
 
@@ -11,10 +7,10 @@ const encryptionContextKey = "bucket/key"
 const resourceNameSize = 16
 
 // infoBucket is the info string for generating the bucket name.
-var infoBucket = []byte(ignoresync.CommandName + "bucket")
+var infoBucket = []byte("ignoresyncbucket")
 
 // infoSSEKey is the info string for generating the SSE key.
-var infoSSEKey = []byte(ignoresync.CommandName + "ssekmskey")
+var infoSSEKey = []byte("ignoresyncssekmskey")
 
 // infoCSEKey is the info string for generating the CSE key.
-var infoCSEKey = []byte(ignoresync.CommandName + "csekmskey")
+var infoCSEKey = []byte("ignoresynccsekmskey")
