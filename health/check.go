@@ -163,16 +163,16 @@ func (o *Checker) CheckBucket(ctx context.Context, state *manager.State) (bool, 
 	if err != nil {
 		return false, NewBucketError(errors.New("failed to get object"))
 	}
-	got, err := io.ReadAll(out.Body)
-	if err != nil {
-		return false, NewBucketError(errors.New("failed to read object"))
-	}
 	defer func() {
 		closeErr := out.Body.Close()
 		if err == nil && closeErr != nil {
 			err = NewBucketError(errors.New("failed to close object"))
 		}
 	}()
+	got, err := io.ReadAll(out.Body)
+	if err != nil {
+		return false, NewBucketError(errors.New("failed to read object"))
+	}
 	if !bytes.Equal(got, body) {
 		return false, NewBucketError(errors.New("content mismatch"))
 	}
