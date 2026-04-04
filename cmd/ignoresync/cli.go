@@ -219,7 +219,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 			{
 				Name:        "run",
 				Usage:       "Run command with setup and cleanup.",
-				Description: "Run command with setup and cleanup. Pull the file before execution.\nIf the command completes or is aborted, the pulled file is cleaned up.",
+				Description: "Run command with setup and cleanup. Pull the files before execution.\nIf the command completes or is aborted, the pulled files are cleaned up.",
 				Category:    categoryRepository,
 				Before:      before,
 				Action:      run,
