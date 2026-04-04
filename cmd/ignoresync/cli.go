@@ -837,8 +837,8 @@ func preview(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	// Set dry run mode
-	o.SetDryrun(true)
+	// Set preview mode
+	o.SetPreview(true)
 
 	// Preview target files
 	if _, err := o.PullPatterns(ctx, state); err != nil {

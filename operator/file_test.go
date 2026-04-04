@@ -318,7 +318,7 @@ func TestOperator_bundlePatterns(t *testing.T) {
 func TestOperator_restoreFiles(t *testing.T) {
 	type fields struct {
 		repo      *RepoInfo
-		dryrun    bool
+		preview   bool
 		overwrite bool
 		w         io.Writer
 	}
@@ -342,7 +342,7 @@ func TestOperator_restoreFiles(t *testing.T) {
 			name: "success",
 			fields: fields{
 				repo:      &RepoInfo{path: t.TempDir()},
-				dryrun:    false,
+				preview:   false,
 				overwrite: true,
 				w:         &bytes.Buffer{},
 			},
@@ -361,7 +361,7 @@ func TestOperator_restoreFiles(t *testing.T) {
 			name: "success at dryrun",
 			fields: fields{
 				repo:      &RepoInfo{path: t.TempDir()},
-				dryrun:    true,
+				preview:   true,
 				overwrite: false,
 				w:         &bytes.Buffer{},
 			},
@@ -380,7 +380,7 @@ func TestOperator_restoreFiles(t *testing.T) {
 			name: "error at invalid archive path",
 			fields: fields{
 				repo:      &RepoInfo{path: t.TempDir()},
-				dryrun:    false,
+				preview:   false,
 				overwrite: false,
 				w:         &bytes.Buffer{},
 			},
@@ -399,7 +399,7 @@ func TestOperator_restoreFiles(t *testing.T) {
 			name: "error at invalid gzip",
 			fields: fields{
 				repo:      &RepoInfo{path: t.TempDir()},
-				dryrun:    false,
+				preview:   false,
 				overwrite: false,
 				w:         &bytes.Buffer{},
 			},
@@ -419,7 +419,7 @@ func TestOperator_restoreFiles(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			o := &Operator{
 				repo:      test.fields.repo,
-				dryrun:    test.fields.dryrun,
+				preview:   test.fields.preview,
 				overwrite: test.fields.overwrite,
 				w:         test.fields.w,
 			}
@@ -433,9 +433,9 @@ func TestOperator_restoreFiles(t *testing.T) {
 
 func TestOperator_restorePatterns(t *testing.T) {
 	type fields struct {
-		repo   *RepoInfo
-		dryrun bool
-		w      io.Writer
+		repo    *RepoInfo
+		preview bool
+		w       io.Writer
 	}
 	type args struct {
 		r io.Reader
@@ -456,9 +456,9 @@ func TestOperator_restorePatterns(t *testing.T) {
 		{
 			name: "success",
 			fields: fields{
-				repo:   &RepoInfo{targetPatterns: getPatterns([]string{"before.txt"})},
-				dryrun: false,
-				w:      &bytes.Buffer{},
+				repo:    &RepoInfo{targetPatterns: getPatterns([]string{"before.txt"})},
+				preview: false,
+				w:       &bytes.Buffer{},
 			},
 			args: args{
 				r: (&Operator{}).bundlePatterns([]string{".env", "config/*.yml"}),
@@ -473,9 +473,9 @@ func TestOperator_restorePatterns(t *testing.T) {
 		{
 			name: "success at empty",
 			fields: fields{
-				repo:   &RepoInfo{targetPatterns: getPatterns([]string{"before.txt"})},
-				dryrun: false,
-				w:      &bytes.Buffer{},
+				repo:    &RepoInfo{targetPatterns: getPatterns([]string{"before.txt"})},
+				preview: false,
+				w:       &bytes.Buffer{},
 			},
 			args: args{
 				r: (&Operator{}).bundlePatterns([]string{}),
@@ -489,9 +489,9 @@ func TestOperator_restorePatterns(t *testing.T) {
 		{
 			name: "success at dryrun",
 			fields: fields{
-				repo:   &RepoInfo{targetPatterns: getPatterns([]string{"before.txt"})},
-				dryrun: true,
-				w:      &bytes.Buffer{},
+				repo:    &RepoInfo{targetPatterns: getPatterns([]string{"before.txt"})},
+				preview: true,
+				w:       &bytes.Buffer{},
 			},
 			args: args{
 				r: (&Operator{}).bundlePatterns([]string{".env", "config/*.yml"}),
@@ -507,9 +507,9 @@ func TestOperator_restorePatterns(t *testing.T) {
 		{
 			name: "error at invalid gzip",
 			fields: fields{
-				repo:   &RepoInfo{targetPatterns: getPatterns([]string{"before.txt"})},
-				dryrun: false,
-				w:      &bytes.Buffer{},
+				repo:    &RepoInfo{targetPatterns: getPatterns([]string{"before.txt"})},
+				preview: false,
+				w:       &bytes.Buffer{},
 			},
 			args: args{
 				r: bytes.NewReader([]byte("invalid gzip")),
@@ -524,9 +524,9 @@ func TestOperator_restorePatterns(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			o := &Operator{
-				repo:   test.fields.repo,
-				dryrun: test.fields.dryrun,
-				w:      test.fields.w,
+				repo:    test.fields.repo,
+				preview: test.fields.preview,
+				w:       test.fields.w,
 			}
 			got, err := o.restorePatterns(test.args.r)
 			testutil.CheckError(t, err != nil, test.want.isError)

@@ -202,7 +202,7 @@ func (o *Operator) restoreFiles(r io.Reader) error {
 				return fmt.Errorf("invalid file path in archive: %s", header.Name)
 			}
 
-			if o.dryrun {
+			if o.preview {
 				o.printStatus("file", filepath.ToSlash(header.Name), header.Size, "preview:")
 				return nil
 			}
@@ -337,7 +337,7 @@ func (o *Operator) restorePatterns(r io.Reader) ([]string, error) {
 		return nil, fmt.Errorf("failed to decode patterns: %w", err)
 	}
 
-	if o.dryrun {
+	if o.preview {
 		for _, pattern := range patterns {
 			o.printStatus("pattern", pattern, -1, "preview:")
 		}

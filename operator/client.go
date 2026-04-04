@@ -49,6 +49,7 @@ type Operator struct {
 	prefixPatterns string    // s3 prefix for patterns
 	workDir        string    // relative path to the working directory
 	dryrun         bool      // whether to perform a dry run
+	preview        bool      // whether to run in preview mode
 	overwrite      bool      // whether to force download even if the same version exists
 	w              io.Writer // writer for output
 }
@@ -102,6 +103,11 @@ func (o *Operator) Repo() *RepoInfo {
 // SetDryrun sets the dry run mode for the repository.
 func (o *Operator) SetDryrun(b bool) {
 	o.dryrun = b
+}
+
+// SetPreview sets the preview mode for the repository.
+func (o *Operator) SetPreview(b bool) {
+	o.preview = b
 }
 
 // SetOverwrite sets the overwrite mode for the repository.
