@@ -53,9 +53,11 @@ const (
 
 	// EnvAWSProfile is the name of the environment variable that contains the AWS profile name.
 	// This environment variable can be used in place of the CLI option `--profile`.
-	EnvAWSProfile = "AWS_PROFILE"
+	// Prefix "IGNORESYNC_" is added to avoid conflict with the AWS CLI environment variable "AWS_PROFILE".
+	EnvAWSProfile = "IGNORESYNC_AWS_PROFILE"
 
 	// EnvAWSRegion is the name of the environment variable that contains the AWS region name.
 	// This environment variable can be used in place of the CLI option `--region`.
-	EnvAWSRegion = "AWS_REGION"
+	// Prefix "IGNORESYNC_" is added to avoid conflict with the AWS CLI environment variable "AWS_REGION".
+	EnvAWSRegion = "IGNORESYNC_AWS_REGION"
 )

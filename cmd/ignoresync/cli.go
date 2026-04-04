@@ -106,7 +106,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryGlobal,
 				Before:      before,
 				Action:      check,
-				Flags:       []cli.Flag{loglevel, profile},
+				Flags:       []cli.Flag{loglevel, profile, region},
 			},
 			{
 				Name:        "activate",
@@ -115,7 +115,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryLocal,
 				Before:      before,
 				Action:      activate,
-				Flags:       []cli.Flag{loglevel, profile},
+				Flags:       []cli.Flag{loglevel, profile, region},
 			},
 			{
 				Name:        "deactivate",
@@ -124,7 +124,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryLocal,
 				Before:      before,
 				Action:      deactivate,
-				Flags:       []cli.Flag{loglevel, profile},
+				Flags:       []cli.Flag{loglevel, profile, region},
 			},
 			{
 				Name:        "list",
@@ -133,7 +133,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryLocal,
 				Before:      before,
 				Action:      list,
-				Flags:       []cli.Flag{loglevel, profile},
+				Flags:       []cli.Flag{loglevel, profile, region},
 			},
 			{
 				Name:        "rotate",
@@ -142,7 +142,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryLocal,
 				Before:      before,
 				Action:      rotate,
-				Flags:       []cli.Flag{loglevel, profile},
+				Flags:       []cli.Flag{loglevel, profile, region},
 			},
 			{
 				Name:        "leave",
@@ -151,7 +151,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryLocal,
 				Before:      before,
 				Action:      leave,
-				Flags:       []cli.Flag{loglevel, profile},
+				Flags:       []cli.Flag{loglevel, profile, region},
 			},
 			{
 				Name:        "push",
@@ -160,7 +160,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryRepository,
 				Before:      before,
 				Action:      push,
-				Flags:       []cli.Flag{loglevel, profile, remote, dryrun},
+				Flags:       []cli.Flag{loglevel, profile, region, remote, dryrun},
 			},
 			{
 				Name:        "pull",
@@ -169,7 +169,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryRepository,
 				Before:      before,
 				Action:      pull,
-				Flags:       []cli.Flag{loglevel, profile, remote, overwrite},
+				Flags:       []cli.Flag{loglevel, profile, region, remote, overwrite},
 			},
 			{
 				Name:        "rm",
@@ -178,7 +178,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryRepository,
 				Before:      before,
 				Action:      rm,
-				Flags:       []cli.Flag{loglevel, profile, remote},
+				Flags:       []cli.Flag{loglevel, profile, region, remote},
 			},
 			{
 				Name:        "set",
@@ -187,7 +187,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryRepository,
 				Before:      before,
 				Action:      set,
-				Flags:       []cli.Flag{loglevel, profile, remote},
+				Flags:       []cli.Flag{loglevel, profile, region, remote},
 			},
 			{
 				Name:        "preview",
@@ -196,7 +196,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryRepository,
 				Before:      before,
 				Action:      preview,
-				Flags:       []cli.Flag{loglevel, profile, remote},
+				Flags:       []cli.Flag{loglevel, profile, region, remote},
 			},
 			{
 				Name:        "rewrap",
@@ -205,7 +205,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryRepository,
 				Before:      before,
 				Action:      rewrap,
-				Flags:       []cli.Flag{loglevel, profile, remote},
+				Flags:       []cli.Flag{loglevel, profile, region, remote},
 			},
 			{
 				Name:        "clean",
@@ -214,7 +214,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 				Category:    categoryRepository,
 				Before:      before,
 				Action:      clean,
-				Flags:       []cli.Flag{loglevel, profile, remote},
+				Flags:       []cli.Flag{loglevel, profile, region, remote},
 			},
 			{
 				Name:        "run",
@@ -368,7 +368,11 @@ func check(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	cfg.Region = state.Region
+
+	// Set region from state if not specified in flags
+	if cmd.String(region.Name) == "" {
+		cfg.Region = state.Region
+	}
 
 	// Check environment
 	c := health.New(cmd.Writer, cfg)
@@ -415,7 +419,11 @@ func activate(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 	if exist {
-		return man.AddCredential(id, key)
+		if err := man.AddCredential(id, key); err != nil {
+			return err
+		}
+		logger.Info("activate: finished")
+		return nil
 	}
 
 	// Generate state from credential
@@ -600,7 +608,11 @@ func push(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	cfg.Region = state.Region
+
+	// Set region from state if not specified in flags
+	if cmd.String(region.Name) == "" {
+		cfg.Region = state.Region
+	}
 
 	// Get current working directory
 	cwd, err := os.Getwd()
@@ -650,7 +662,11 @@ func pull(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	cfg.Region = state.Region
+
+	// Set region from state if not specified in flags
+	if cmd.String(region.Name) == "" {
+		cfg.Region = state.Region
+	}
 
 	// Get current working directory
 	cwd, err := os.Getwd()
@@ -700,7 +716,11 @@ func rm(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	cfg.Region = state.Region
+
+	// Set region from state if not specified in flags
+	if cmd.String(region.Name) == "" {
+		cfg.Region = state.Region
+	}
 
 	// Get current working directory
 	cwd, err := os.Getwd()
@@ -746,7 +766,11 @@ func set(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	cfg.Region = state.Region
+
+	// Set region from state if not specified in flags
+	if cmd.String(region.Name) == "" {
+		cfg.Region = state.Region
+	}
 
 	// Get current working directory
 	cwd, err := os.Getwd()
@@ -795,7 +819,11 @@ func preview(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	cfg.Region = state.Region
+
+	// Set region from state if not specified in flags
+	if cmd.String(region.Name) == "" {
+		cfg.Region = state.Region
+	}
 
 	// Get current working directory
 	cwd, err := os.Getwd()
@@ -843,7 +871,11 @@ func rewrap(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	cfg.Region = state.Region
+
+	// Set region from state if not specified in flags
+	if cmd.String(region.Name) == "" {
+		cfg.Region = state.Region
+	}
 
 	// Get current working directory
 	cwd, err := os.Getwd()
@@ -883,7 +915,11 @@ func clean(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	cfg.Region = state.Region
+
+	// Set region from state if not specified in flags
+	if cmd.String(region.Name) == "" {
+		cfg.Region = state.Region
+	}
 
 	// Get current working directory
 	cwd, err := os.Getwd()
