@@ -1,23 +1,19 @@
 package main
 
-const (
-	// categoryGlobal is the category for global commands that affect the entire environment.
-	categoryGlobal = "GLOBAL COMMANDS"
+// categoryGlobal is the category for global commands that affect the entire environment.
+const categoryGlobal = "GLOBAL COMMANDS"
 
-	// categoryLocal is the category for local commands that affect the local machine.
-	categoryLocal = "LOCAL COMMANDS"
+// categoryLocal is the category for local commands that affect the local machine.
+const categoryLocal = "LOCAL COMMANDS"
 
-	// categoryRepository is the category for repository commands that affect the repository.
-	categoryRepository = "REPOSITORY COMMANDS"
-)
+// categoryRepository is the category for repository commands that affect the repository.
+const categoryRepository = "REPOSITORY COMMANDS"
 
-var (
-	// keyConfig is the key for the AWS config.
-	keyConfig = "config"
+// keyConfig is the key for the AWS config.
+const keyConfig = "config"
 
-	// keyCredential is the key for the credential.
-	keyCredential = "credential"
+// keyCredential is the key for the credential.
+const keyCredential = "credential"
 
-	// keyEnviron is the key for the original environment snapshot.
-	keyEnviron = "environ"
-)
+// keyEnviron is the key for the original environment snapshot.
+const keyEnviron = "environ"
