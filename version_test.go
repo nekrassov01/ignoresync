@@ -7,7 +7,7 @@ import (
 	"github.com/nekrassov01/ignoresync/testutil"
 )
 
-func Test_getVersion(t *testing.T) {
+func TestVersion(t *testing.T) {
 	type hook struct {
 		before func()
 		after  func()
