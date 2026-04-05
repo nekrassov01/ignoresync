@@ -1,4 +1,4 @@
-package ignoresync
+package params
 
 const (
 	// CommandName is the name of the application.

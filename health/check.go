@@ -16,9 +16,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
-	"github.com/nekrassov01/ignoresync"
 	"github.com/nekrassov01/ignoresync/color"
 	"github.com/nekrassov01/ignoresync/manager"
+	"github.com/nekrassov01/ignoresync/params"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -73,7 +73,7 @@ func (o *Checker) Check(ctx context.Context, state *manager.State) error {
 // CheckState checks if the given state is complete and valid.
 func (o *Checker) CheckState(_ context.Context, state *manager.State) (bool, error) {
 	if state == nil ||
-		len(state.MasterKeys[state.KeyID]) != ignoresync.MasterKeySize ||
+		len(state.MasterKeys[state.KeyID]) != params.MasterKeySize ||
 		state.Account == "" ||
 		state.Region == "" ||
 		state.Bucket == nil ||
@@ -90,7 +90,7 @@ func (o *Checker) CheckState(_ context.Context, state *manager.State) (bool, err
 // CheckStack checks if the CloudFormation stack exists and is in a complete state.
 func (o *Checker) CheckStack(ctx context.Context, _ *manager.State) (bool, error) {
 	in := &cloudformation.DescribeStacksInput{
-		StackName: aws.String(ignoresync.CanonicalName),
+		StackName: aws.String(params.CanonicalName),
 	}
 	out, err := o.cfn.DescribeStacks(ctx, in)
 	if err != nil {

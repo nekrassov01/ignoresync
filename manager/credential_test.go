@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/nekrassov01/ignoresync"
+	"github.com/nekrassov01/ignoresync/params"
 	"github.com/nekrassov01/ignoresync/testutil"
 )
 
@@ -27,8 +27,8 @@ func TestGenerateCredential(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			id, key, err := GenerateCredential()
 			testutil.CheckError(t, err != nil, test.want.isError)
-			testutil.CheckHex(t, id, hex.EncodedLen(ignoresync.KeyIDSize))
-			testutil.CheckHex(t, hex.EncodeToString(key), hex.EncodedLen(ignoresync.MasterKeySize))
+			testutil.CheckHex(t, id, hex.EncodedLen(params.KeyIDSize))
+			testutil.CheckHex(t, hex.EncodeToString(key), hex.EncodedLen(params.MasterKeySize))
 		})
 	}
 }

@@ -1,8 +1,6 @@
-package env
+package config
 
-import (
-	"github.com/nekrassov01/ignoresync"
-)
+import "github.com/nekrassov01/ignoresync/errors"
 
 // ErrorKind represents the kind of error.
 type ErrorKind int
@@ -11,8 +9,8 @@ const (
 	// ErrorKindNone indicates no error.
 	ErrorKindNone ErrorKind = iota
 
-	// ErrorKindEnv indicates error in environment.
-	ErrorKindEnv
+	// ErrorKindConfig indicates error in AWS configuration.
+	ErrorKindConfig
 )
 
 // String returns the string representation of the ErrorKind.
@@ -20,8 +18,8 @@ func (k ErrorKind) String() string {
 	switch k {
 	case ErrorKindNone:
 		return "no error"
-	case ErrorKindEnv:
-		return "environment error"
+	case ErrorKindConfig:
+		return "config error"
 	default:
 		return "unknown error"
 	}
@@ -35,7 +33,7 @@ type Error struct {
 
 // Error returns the string representation of the error.
 func (e *Error) Error() string {
-	return ignoresync.FormatError("env", e.Kind.String(), e.Err)
+	return errors.FormatError("config", e.Kind.String(), e.Err)
 }
 
 // Unwrap returns the underlying error of the error.
@@ -43,7 +41,7 @@ func (e *Error) Unwrap() error {
 	return e.Err
 }
 
-// NewEnvError constructs an environment error wrapping optional underlying error.
-func NewEnvError(err error) error {
-	return &Error{Kind: ErrorKindEnv, Err: err}
+// NewConfigError constructs a config error wrapping optional underlying error.
+func NewConfigError(err error) error {
+	return &Error{Kind: ErrorKindConfig, Err: err}
 }

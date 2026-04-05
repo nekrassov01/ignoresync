@@ -8,7 +8,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
-	"github.com/nekrassov01/ignoresync"
+	"github.com/nekrassov01/ignoresync/params"
 )
 
 var _ ISTS = (*STS)(nil)
@@ -62,7 +62,7 @@ func getUser() string {
 		user = os.Getenv("USERNAME")
 	}
 	if user == "" {
-		user = ignoresync.DefaultUserName
+		user = params.DefaultUserName
 	}
 	return user
 }

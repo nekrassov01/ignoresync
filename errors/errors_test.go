@@ -1,4 +1,4 @@
-package ignoresync
+package errors
 
 import (
 	"testing"

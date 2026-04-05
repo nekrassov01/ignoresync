@@ -6,7 +6,7 @@ import (
 	"io"
 	"testing"
 
-	"github.com/nekrassov01/ignoresync"
+	"github.com/nekrassov01/ignoresync/params"
 	"github.com/nekrassov01/ignoresync/testutil"
 	"github.com/zalando/go-keyring"
 )
@@ -55,10 +55,10 @@ func TestAddCredential(t *testing.T) {
 					keyring.MockInit()
 					buf := &bytes.Buffer{}
 					_ = gob.NewEncoder(buf).Encode(NewMockState())
-					_ = keyring.Set(ignoresync.CanonicalName, "os-user", buf.String())
+					_ = keyring.Set(params.CanonicalName, "os-user", buf.String())
 				},
 				after: func() {
-					_ = keyring.Delete(ignoresync.CanonicalName, "os-user")
+					_ = keyring.Delete(params.CanonicalName, "os-user")
 				},
 			},
 		},
@@ -102,10 +102,10 @@ func TestAddCredential(t *testing.T) {
 					keyring.MockInit()
 					buf := &bytes.Buffer{}
 					_ = gob.NewEncoder(buf).Encode(NewMockState())
-					_ = keyring.Set(ignoresync.CanonicalName, "os-user", buf.String())
+					_ = keyring.Set(params.CanonicalName, "os-user", buf.String())
 				},
 				after: func() {
-					_ = keyring.Delete(ignoresync.CanonicalName, "os-user")
+					_ = keyring.Delete(params.CanonicalName, "os-user")
 				},
 			},
 		},
@@ -178,10 +178,10 @@ func TestRemoveCredential(t *testing.T) {
 					_ = gob.NewEncoder(buf).Encode(NewMockState(func(s *State) {
 						s.MasterKeys["22222222bbbbbbbb"] = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
 					}))
-					_ = keyring.Set(ignoresync.CanonicalName, "os-user", buf.String())
+					_ = keyring.Set(params.CanonicalName, "os-user", buf.String())
 				},
 				after: func() {
-					_ = keyring.Delete(ignoresync.CanonicalName, "os-user")
+					_ = keyring.Delete(params.CanonicalName, "os-user")
 				},
 			},
 		},
@@ -225,10 +225,10 @@ func TestRemoveCredential(t *testing.T) {
 					keyring.MockInit()
 					buf := &bytes.Buffer{}
 					_ = gob.NewEncoder(buf).Encode(NewMockState())
-					_ = keyring.Set(ignoresync.CanonicalName, "os-user", buf.String())
+					_ = keyring.Set(params.CanonicalName, "os-user", buf.String())
 				},
 				after: func() {
-					_ = keyring.Delete(ignoresync.CanonicalName, "os-user")
+					_ = keyring.Delete(params.CanonicalName, "os-user")
 				},
 			},
 		},
@@ -254,10 +254,10 @@ func TestRemoveCredential(t *testing.T) {
 						s.KeyID = "11111111aaaaaaaa"
 						s.MasterKeys["22222222bbbbbbbb"] = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
 					}))
-					_ = keyring.Set(ignoresync.CanonicalName, "os-user", buf.String())
+					_ = keyring.Set(params.CanonicalName, "os-user", buf.String())
 				},
 				after: func() {
-					_ = keyring.Delete(ignoresync.CanonicalName, "os-user")
+					_ = keyring.Delete(params.CanonicalName, "os-user")
 				},
 			},
 		},
@@ -332,10 +332,10 @@ func TestListCredentials(t *testing.T) {
 					_ = gob.NewEncoder(buf).Encode(NewMockState(func(s *State) {
 						s.MasterKeys["22222222bbbbbbbb"] = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
 					}))
-					_ = keyring.Set(ignoresync.CanonicalName, "os-user", buf.String())
+					_ = keyring.Set(params.CanonicalName, "os-user", buf.String())
 				},
 				after: func() {
-					_ = keyring.Delete(ignoresync.CanonicalName, "os-user")
+					_ = keyring.Delete(params.CanonicalName, "os-user")
 				},
 			},
 		},
@@ -426,7 +426,7 @@ func TestManager_EnsureState(t *testing.T) {
 					keyring.MockInit()
 				},
 				after: func() {
-					_ = keyring.Delete(ignoresync.CanonicalName, "os-user")
+					_ = keyring.Delete(params.CanonicalName, "os-user")
 				},
 			},
 		},
@@ -449,10 +449,10 @@ func TestManager_EnsureState(t *testing.T) {
 					keyring.MockInit()
 					buf := &bytes.Buffer{}
 					_ = gob.NewEncoder(buf).Encode(NewMockState())
-					_ = keyring.Set(ignoresync.CanonicalName, "os-user", buf.String())
+					_ = keyring.Set(params.CanonicalName, "os-user", buf.String())
 				},
 				after: func() {
-					_ = keyring.Delete(ignoresync.CanonicalName, "os-user")
+					_ = keyring.Delete(params.CanonicalName, "os-user")
 				},
 			},
 		},
@@ -475,7 +475,7 @@ func TestManager_EnsureState(t *testing.T) {
 					keyring.MockInit()
 				},
 				after: func() {
-					_ = keyring.Delete(ignoresync.CanonicalName, "os-user")
+					_ = keyring.Delete(params.CanonicalName, "os-user")
 				},
 			},
 		},
@@ -496,10 +496,10 @@ func TestManager_EnsureState(t *testing.T) {
 			hook: hook{
 				before: func() {
 					keyring.MockInitWithError(testutil.NewError())
-					_ = keyring.Set(ignoresync.CanonicalName, "os-user", "data")
+					_ = keyring.Set(params.CanonicalName, "os-user", "data")
 				},
 				after: func() {
-					_ = keyring.Delete(ignoresync.CanonicalName, "os-user")
+					_ = keyring.Delete(params.CanonicalName, "os-user")
 				},
 			},
 		},
@@ -584,10 +584,10 @@ func TestManager_StoreState(t *testing.T) {
 			hook: hook{
 				before: func() {
 					keyring.MockInitWithError(testutil.NewError())
-					_ = keyring.Set(ignoresync.CanonicalName, "os-user", "data")
+					_ = keyring.Set(params.CanonicalName, "os-user", "data")
 				},
 				after: func() {
-					_ = keyring.Delete(ignoresync.CanonicalName, "os-user")
+					_ = keyring.Delete(params.CanonicalName, "os-user")
 				},
 			},
 		},
@@ -653,10 +653,10 @@ func TestManager_LoadState(t *testing.T) {
 					keyring.MockInit()
 					buf := &bytes.Buffer{}
 					_ = gob.NewEncoder(buf).Encode(NewMockState())
-					_ = keyring.Set(ignoresync.CanonicalName, "os-user", buf.String())
+					_ = keyring.Set(params.CanonicalName, "os-user", buf.String())
 				},
 				after: func() {
-					_ = keyring.Delete(ignoresync.CanonicalName, "os-user")
+					_ = keyring.Delete(params.CanonicalName, "os-user")
 				},
 			},
 		},
@@ -694,10 +694,10 @@ func TestManager_LoadState(t *testing.T) {
 					keyring.MockInit()
 					buf := &bytes.Buffer{}
 					_ = gob.NewEncoder(buf).Encode(NewMockState())
-					_ = keyring.Set(ignoresync.CanonicalName, "os-user", buf.String())
+					_ = keyring.Set(params.CanonicalName, "os-user", buf.String())
 				},
 				after: func() {
-					_ = keyring.Delete(ignoresync.CanonicalName, "os-user")
+					_ = keyring.Delete(params.CanonicalName, "os-user")
 				},
 			},
 		},
@@ -717,10 +717,10 @@ func TestManager_LoadState(t *testing.T) {
 					keyring.MockInit()
 					buf := &bytes.Buffer{}
 					_ = gob.NewEncoder(buf).Encode(NewMockState())
-					_ = keyring.Set(ignoresync.CanonicalName, "os-user", buf.String())
+					_ = keyring.Set(params.CanonicalName, "os-user", buf.String())
 				},
 				after: func() {
-					_ = keyring.Delete(ignoresync.CanonicalName, "os-user")
+					_ = keyring.Delete(params.CanonicalName, "os-user")
 				},
 			},
 		},
@@ -787,10 +787,10 @@ func TestManager_CheckStateExist(t *testing.T) {
 					keyring.MockInit()
 					buf := &bytes.Buffer{}
 					_ = gob.NewEncoder(buf).Encode(NewMockState())
-					_ = keyring.Set(ignoresync.CanonicalName, "os-user", buf.String())
+					_ = keyring.Set(params.CanonicalName, "os-user", buf.String())
 				},
 				after: func() {
-					_ = keyring.Delete(ignoresync.CanonicalName, "os-user")
+					_ = keyring.Delete(params.CanonicalName, "os-user")
 				},
 			},
 		},
@@ -887,7 +887,7 @@ func TestManager_DeleteState(t *testing.T) {
 			hook: hook{
 				before: func() {
 					keyring.MockInit()
-					_ = keyring.Set(ignoresync.CanonicalName, "os-user", "data")
+					_ = keyring.Set(params.CanonicalName, "os-user", "data")
 				},
 				after: nil,
 			},

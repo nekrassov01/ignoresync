@@ -1,8 +1,6 @@
 package operator
 
-import (
-	"github.com/nekrassov01/ignoresync"
-)
+import "github.com/nekrassov01/ignoresync/errors"
 
 // ErrorKind represents the kind of error that occurred in the operator.
 type ErrorKind int
@@ -95,7 +93,7 @@ type Error struct {
 
 // Error returns the string representation of the error.
 func (e *Error) Error() string {
-	return ignoresync.FormatError("operator", e.Kind.String(), e.Err)
+	return errors.FormatError("operator", e.Kind.String(), e.Err)
 }
 
 // Unwrap returns the underlying error of the error.

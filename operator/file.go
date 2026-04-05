@@ -14,8 +14,8 @@ import (
 	"strings"
 
 	"github.com/go-git/go-git/v5/plumbing/format/gitignore"
-	"github.com/nekrassov01/ignoresync"
 	"github.com/nekrassov01/ignoresync/color"
+	"github.com/nekrassov01/ignoresync/params"
 	"github.com/nekrassov01/ignoresync/prompt"
 	"znkr.io/diff/textdiff"
 	diffcolor "znkr.io/diff/textdiff/color"
@@ -217,7 +217,7 @@ func (o *Operator) restoreFiles(r io.Reader) error {
 				}
 			}
 
-			tmp, err := os.CreateTemp("", ignoresync.DefaultTempPattern)
+			tmp, err := os.CreateTemp("", params.DefaultTempPattern)
 			if err != nil {
 				return fmt.Errorf("failed to create temp file: %w", err)
 			}

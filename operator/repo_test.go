@@ -8,7 +8,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing/format/gitignore"
-	"github.com/nekrassov01/ignoresync"
+	"github.com/nekrassov01/ignoresync/params"
 	"github.com/nekrassov01/ignoresync/testutil"
 )
 
@@ -35,14 +35,14 @@ func Test_newRepoInfo(t *testing.T) {
 			name: "success",
 			args: args{
 				path:   testutil.RepoPath,
-				remote: ignoresync.DefaultRemoteName,
+				remote: params.DefaultRemoteName,
 			},
 			want: want{
 				repo: &RepoInfo{
 					Name:   "example.com/localuser/repo",
 					Hash:   "de8635e39fd183ba59e5d57ad1ce93c6e96ccd5cf7e80d67801e5ea730487c93",
 					path:   testutil.RepoPath,
-					remote: ignoresync.DefaultRemoteName,
+					remote: params.DefaultRemoteName,
 					user:   "localuser",
 				},
 				isError: false,
@@ -66,7 +66,7 @@ func Test_newRepoInfo(t *testing.T) {
 			name: "error at opening repo",
 			args: args{
 				path:   t.TempDir(),
-				remote: ignoresync.DefaultRemoteName,
+				remote: params.DefaultRemoteName,
 			},
 			want: want{
 				repo:    nil,
@@ -83,7 +83,7 @@ func Test_newRepoInfo(t *testing.T) {
 					}
 					return dir
 				}(),
-				remote: ignoresync.DefaultRemoteName,
+				remote: params.DefaultRemoteName,
 			},
 			want: want{
 				repo:    nil,
@@ -100,7 +100,7 @@ func Test_newRepoInfo(t *testing.T) {
 						t.Fatal(err)
 					}
 					cfg := &config.RemoteConfig{
-						Name: ignoresync.DefaultRemoteName,
+						Name: params.DefaultRemoteName,
 						URLs: []string{""},
 					}
 					if _, err := repo.CreateRemote(cfg); err != nil {
@@ -108,7 +108,7 @@ func Test_newRepoInfo(t *testing.T) {
 					}
 					return dir
 				}(),
-				remote: ignoresync.DefaultRemoteName,
+				remote: params.DefaultRemoteName,
 			},
 			want: want{
 				repo:    nil,
@@ -247,7 +247,7 @@ func Test_getRemoteURL(t *testing.T) {
 						t.Fatal(err)
 					}
 					remote := &config.RemoteConfig{
-						Name: ignoresync.DefaultRemoteName,
+						Name: params.DefaultRemoteName,
 						URLs: []string{
 							"https://example.com/user/repo.git",
 							"git@example.com:user/repo.git",
@@ -258,7 +258,7 @@ func Test_getRemoteURL(t *testing.T) {
 					}
 					return repo
 				}(),
-				name: ignoresync.DefaultRemoteName,
+				name: params.DefaultRemoteName,
 			},
 			want: want{
 				value:   "https://example.com/user/repo.git",
@@ -301,7 +301,7 @@ func Test_getRemoteURL(t *testing.T) {
 						t.Fatal(err)
 					}
 					remote := &config.RemoteConfig{
-						Name: ignoresync.DefaultRemoteName,
+						Name: params.DefaultRemoteName,
 						URLs: []string{
 							"https://example.com/user/repo.git",
 							"git@example.com:user/repo.git",
@@ -328,7 +328,7 @@ func Test_getRemoteURL(t *testing.T) {
 						t.Fatal(err)
 					}
 					remote := &config.RemoteConfig{
-						Name: ignoresync.DefaultRemoteName,
+						Name: params.DefaultRemoteName,
 						URLs: []string{
 							"https://example.com/user/repo.git",
 							"git@example.com:user/repo.git",
@@ -355,7 +355,7 @@ func Test_getRemoteURL(t *testing.T) {
 						t.Fatal(err)
 					}
 					remote := &config.RemoteConfig{
-						Name: ignoresync.DefaultRemoteName,
+						Name: params.DefaultRemoteName,
 						URLs: []string{
 							"",
 							"",
@@ -366,7 +366,7 @@ func Test_getRemoteURL(t *testing.T) {
 					}
 					return repo
 				}(),
-				name: ignoresync.DefaultRemoteName,
+				name: params.DefaultRemoteName,
 			},
 			want: want{
 				value:   "",
@@ -377,7 +377,7 @@ func Test_getRemoteURL(t *testing.T) {
 			name: "no repo",
 			args: args{
 				repo: nil,
-				name: ignoresync.DefaultRemoteName,
+				name: params.DefaultRemoteName,
 			},
 			want: want{
 				value:   "",
@@ -554,7 +554,7 @@ func Test_getUser(t *testing.T) {
 				repo: nil,
 			},
 			want: want{
-				value: ignoresync.DefaultUserName,
+				value: params.DefaultUserName,
 			},
 		},
 	}

@@ -18,6 +18,7 @@ import (
 	"github.com/nekrassov01/ignoresync/health"
 	"github.com/nekrassov01/ignoresync/manager"
 	"github.com/nekrassov01/ignoresync/operator"
+	"github.com/nekrassov01/ignoresync/params"
 	"github.com/nekrassov01/ignoresync/prompt"
 	"github.com/nekrassov01/logger/integrations/awssdk"
 	"github.com/nekrassov01/logger/log"
@@ -33,7 +34,7 @@ var (
 		Name:    "log-level",
 		Aliases: []string{"l"},
 		Usage:   "set log level",
-		Sources: cli.EnvVars(ignoresync.EnvLogLevel),
+		Sources: cli.EnvVars(params.EnvLogLevel),
 		Value:   slog.LevelInfo.String(),
 	}
 
@@ -42,7 +43,7 @@ var (
 		Name:    "profile",
 		Aliases: []string{"p"},
 		Usage:   "set aws profile",
-		Sources: cli.EnvVars(ignoresync.EnvAWSProfile),
+		Sources: cli.EnvVars(params.EnvAWSProfile),
 	}
 
 	// region is the flag for AWS region.
@@ -50,7 +51,7 @@ var (
 		Name:    "region",
 		Aliases: []string{"r"},
 		Usage:   "set aws region",
-		Sources: cli.EnvVars(ignoresync.EnvAWSRegion),
+		Sources: cli.EnvVars(params.EnvAWSRegion),
 	}
 
 	// remote is the flag for git remote name.
@@ -58,8 +59,8 @@ var (
 		Name:    "remote",
 		Aliases: []string{"R"},
 		Usage:   "set git remote name",
-		Sources: cli.EnvVars(ignoresync.EnvRemoteName),
-		Value:   ignoresync.DefaultRemoteName,
+		Sources: cli.EnvVars(params.EnvRemoteName),
+		Value:   params.DefaultRemoteName,
 	}
 
 	// dryrun is the flag for dry run mode.
@@ -80,7 +81,7 @@ var (
 // newCmd creates a new CLI command.
 func newCmd(w, ew io.Writer) *cli.Command {
 	return &cli.Command{
-		Name:                  ignoresync.CommandName,
+		Name:                  params.CommandName,
 		Version:               ignoresync.Version(),
 		Usage:                 "Your shadow repository for ignored files.",
 		Description:           "Sync files ignored in the repository across machines without configuration.",
@@ -246,7 +247,7 @@ func before(ctx context.Context, cmd *cli.Command) (context.Context, error) {
 	// Create logger for application
 	logger = log.NewLogger(log.NewCLIHandler(
 		cmd.ErrWriter,
-		log.WithLabel(ignoresync.LogLabel),
+		log.WithLabel(params.LogLabel),
 		log.WithLevel(level),
 		log.WithCaller(level <= slog.LevelDebug),
 		log.WithStyle(s),
@@ -269,9 +270,9 @@ func before(ctx context.Context, cmd *cli.Command) (context.Context, error) {
 	cfg.ClientLogMode = aws.LogRequest | aws.LogResponse | aws.LogRetries | aws.LogSigning | aws.LogDeprecatedUsage
 
 	// Warn if running in CI mode
-	cred := os.Getenv(ignoresync.EnvCredential)
+	cred := os.Getenv(params.EnvCredential)
 	if cred != "" {
-		msg := fmt.Sprintf("ci mode: environment variable %q is set: this is not recommended except for CI use", ignoresync.EnvCredential)
+		msg := fmt.Sprintf("ci mode: environment variable %q is set: this is not recommended except for CI use", params.EnvCredential)
 		logger.Warn(msg)
 	}
 

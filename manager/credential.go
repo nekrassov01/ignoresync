@@ -6,17 +6,17 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/nekrassov01/ignoresync"
+	"github.com/nekrassov01/ignoresync/params"
 )
 
 // GenerateCredential generates the underlying master key ID and master key.
 func GenerateCredential() (string, []byte, error) {
-	cred := make([]byte, ignoresync.CredentialSize)
+	cred := make([]byte, params.CredentialSize)
 	if _, err := rand.Read(cred); err != nil {
 		return "", nil, NewCredentialError(fmt.Errorf("failed to generate credential: %w", err))
 	}
-	id := hex.EncodeToString(cred[:ignoresync.KeyIDSize])
-	key := cred[ignoresync.KeyIDSize:]
+	id := hex.EncodeToString(cred[:params.KeyIDSize])
+	key := cred[params.KeyIDSize:]
 	return id, key, nil
 }
 
@@ -27,17 +27,17 @@ func EncodeCredential(id string, key []byte) string {
 
 // DecodeCredential decodes the hexadecimal string back to the credential bytes.
 func DecodeCredential(cred string) (string, []byte, error) {
-	idLen := hex.EncodedLen(ignoresync.KeyIDSize)
-	if len(cred) != idLen+hex.EncodedLen(ignoresync.MasterKeySize) {
+	idLen := hex.EncodedLen(params.KeyIDSize)
+	if len(cred) != idLen+hex.EncodedLen(params.MasterKeySize) {
 		return "", nil, NewCredentialError(fmt.Errorf("failed to validate credential: invalid key length"))
 	}
 	id := cred[:idLen]
 	kh := cred[idLen:]
-	_, err := decode(id, ignoresync.KeyIDSize)
+	_, err := decode(id, params.KeyIDSize)
 	if err != nil {
 		return "", nil, NewCredentialError(fmt.Errorf("failed to decode key id: %w", err))
 	}
-	key, err := decode(kh, ignoresync.MasterKeySize)
+	key, err := decode(kh, params.MasterKeySize)
 	if err != nil {
 		return "", nil, NewCredentialError(fmt.Errorf("failed to decode master key: %w", err))
 	}

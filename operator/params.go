@@ -3,7 +3,7 @@ package operator
 import (
 	"time"
 
-	"github.com/nekrassov01/ignoresync"
+	"github.com/nekrassov01/ignoresync/params"
 )
 
 /* General parameters */
@@ -37,38 +37,38 @@ const (
 
 const (
 	// infoLocalKey is the info string for deriving local key from master key.
-	infoLocalKey = ignoresync.CommandName + "localkey"
+	infoLocalKey = params.CommandName + "localkey"
 
 	// infoWrapKey is the info string for deriving wrap key from local key and cloud key.
-	infoWrapKey = ignoresync.CommandName + "wrapkey"
+	infoWrapKey = params.CommandName + "wrapkey"
 )
 
 /* S3 metadata keys */
 
 const (
 	// metadataKeySchemeVersion is the S3 user-metadata key for the encryption/decryption scheme version.
-	metadataKeySchemeVersion = ignoresync.CommandName + "-scheme-version"
+	metadataKeySchemeVersion = params.CommandName + "-scheme-version"
 
 	// metadataKeyKeyID is the S3 user-metadata key for the master key ID.
-	metadataKeyKeyID = ignoresync.CommandName + "-master-key-id"
+	metadataKeyKeyID = params.CommandName + "-master-key-id"
 
 	// metadataKeyCloudKey is the S3 user-metadata key for the encrypted cloud key (base64-encoded).
-	metadataKeyCloudKey = ignoresync.CommandName + "-cloud-key"
+	metadataKeyCloudKey = params.CommandName + "-cloud-key"
 
 	// metadataKeyRepoKey is the S3 user-metadata key for the encrypted repo key (base64-encoded).
-	metadataKeyRepoKey = ignoresync.CommandName + "-repo-key"
+	metadataKeyRepoKey = params.CommandName + "-repo-key"
 
 	// metadataKeyDataKey is the S3 user-metadata key for the encrypted data key (base64-encoded).
-	metadataKeyDataKey = ignoresync.CommandName + "-data-key"
+	metadataKeyDataKey = params.CommandName + "-data-key"
 
 	// metadataKeyBaseNonce is the S3 user-metadata key for the base nonce used in encryption (base64-encoded).
-	metadataKeyBaseNonce = ignoresync.CommandName + "-base-nonce"
+	metadataKeyBaseNonce = params.CommandName + "-base-nonce"
 
 	// metadataKeyChunkSize is the S3 user-metadata key for the chunk size used in encryption.
-	metadataKeyChunkSize = ignoresync.CommandName + "-chunk-size"
+	metadataKeyChunkSize = params.CommandName + "-chunk-size"
 
 	// metadataKeyGitUser is the S3 user-metadata key for the git user name.
-	metadataKeyGitUser = ignoresync.CommandName + "-git-user"
+	metadataKeyGitUser = params.CommandName + "-git-user"
 )
 
 /* S3 uploader parameters */

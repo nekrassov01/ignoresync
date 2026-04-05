@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/nekrassov01/ignoresync"
 	"github.com/nekrassov01/ignoresync/manager"
+	"github.com/nekrassov01/ignoresync/params"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -132,7 +132,7 @@ func (o *Operator) push(ctx context.Context, state *manager.State, body io.ReadC
 	}()
 
 	// Step 5: Create metadata
-	gitUser := ignoresync.DefaultUserName
+	gitUser := params.DefaultUserName
 	if o.repo != nil && o.repo.user != "" {
 		gitUser = o.repo.user
 	}

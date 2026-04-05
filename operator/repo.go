@@ -13,7 +13,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing/format/gitignore"
-	"github.com/nekrassov01/ignoresync"
+	"github.com/nekrassov01/ignoresync/params"
 )
 
 // RepoInfo holds the repository information for the operator.
@@ -95,7 +95,7 @@ func getRemoteURL(repo *git.Repository, name string) (string, error) {
 
 	// If remote is not specified, use "origin" by default
 	if name == "" {
-		name = ignoresync.DefaultRemoteName
+		name = params.DefaultRemoteName
 	}
 
 	// Try to get the specified remote first
@@ -172,7 +172,7 @@ func getUser(repo *git.Repository) string {
 		return name
 	}
 
-	return ignoresync.DefaultUserName
+	return params.DefaultUserName
 }
 
 // getFirstValidURL returns the first non-empty URL from the given list.

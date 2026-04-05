@@ -10,8 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	"github.com/aws/smithy-go"
-	"github.com/nekrassov01/ignoresync"
 	"github.com/nekrassov01/ignoresync/manager"
+	"github.com/nekrassov01/ignoresync/params"
 )
 
 // Deploy creates and waits for the CloudFormation stack deployment.
@@ -37,7 +37,7 @@ func (o *Deployer) CheckDeployed(ctx context.Context, state *manager.State) (boo
 		opt.Region = state.Region
 	}
 	in := &cloudformation.DescribeStacksInput{
-		StackName: aws.String(ignoresync.CanonicalName),
+		StackName: aws.String(params.CanonicalName),
 	}
 	if _, err := o.cfn.DescribeStacks(ctx, in, opt); err != nil {
 		if e, ok := errors.AsType[smithy.APIError](err); ok {
@@ -56,7 +56,7 @@ func (o *Deployer) createStack(ctx context.Context, state *manager.State) error 
 		opt.Region = state.Region
 	}
 	in := &cloudformation.CreateStackInput{
-		StackName:    aws.String(ignoresync.CanonicalName),
+		StackName:    aws.String(params.CanonicalName),
 		TemplateBody: aws.String(template),
 		Capabilities: []types.Capability{
 			types.CapabilityCapabilityIam,
@@ -93,7 +93,7 @@ func (o *Deployer) waitStack(ctx context.Context, state *manager.State) error {
 		}
 	}
 	in := &cloudformation.DescribeStacksInput{
-		StackName: aws.String(ignoresync.CanonicalName),
+		StackName: aws.String(params.CanonicalName),
 	}
 	waiter := o.cfn.NewStackCreateCompleteWaiter(opt)
 	if err := waiter.Wait(ctx, in, stackMaxWaitDur); err != nil {
@@ -108,7 +108,7 @@ func (o *Deployer) getFailReason(ctx context.Context, state *manager.State) stri
 		opt.Region = state.Region
 	}
 	in := &cloudformation.DescribeStackEventsInput{
-		StackName: aws.String(ignoresync.CanonicalName),
+		StackName: aws.String(params.CanonicalName),
 	}
 	var token *string
 	var reason string

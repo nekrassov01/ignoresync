@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
-	"github.com/nekrassov01/ignoresync"
+	"github.com/nekrassov01/ignoresync/params"
 	"github.com/zalando/go-keyring"
 )
 
@@ -152,7 +152,7 @@ func (o *Manager) StoreState(state *State) error {
 	if err := gob.NewEncoder(&buf).Encode(state); err != nil {
 		return NewStateError(fmt.Errorf("failed to store state: %w", err))
 	}
-	if err := keyring.Set(ignoresync.CanonicalName, o.OSUser, buf.String()); err != nil {
+	if err := keyring.Set(params.CanonicalName, o.OSUser, buf.String()); err != nil {
 		return NewStateError(fmt.Errorf("failed to store state: %w", err))
 	}
 	return nil
@@ -162,7 +162,7 @@ func (o *Manager) StoreState(state *State) error {
 // After loading data, verify that the current profile matches the loaded state.
 func (o *Manager) LoadState() (*State, error) {
 	state := &State{}
-	s, err := keyring.Get(ignoresync.CanonicalName, o.OSUser)
+	s, err := keyring.Get(params.CanonicalName, o.OSUser)
 	if err != nil {
 		return nil, NewStateError(fmt.Errorf("failed to load state: %w", err))
 	}
@@ -181,7 +181,7 @@ func (o *Manager) LoadState() (*State, error) {
 
 // DeleteState deletes the stored data state.
 func (o *Manager) DeleteState() error {
-	if err := keyring.Delete(ignoresync.CanonicalName, o.OSUser); err != nil {
+	if err := keyring.Delete(params.CanonicalName, o.OSUser); err != nil {
 		return NewStateError(fmt.Errorf("failed to delete state: %w", err))
 	}
 	return nil
@@ -189,7 +189,7 @@ func (o *Manager) DeleteState() error {
 
 // CheckStateExist checks if the state exists in the keyring.
 func (o *Manager) CheckStateExist() (bool, error) {
-	_, err := keyring.Get(ignoresync.CanonicalName, o.OSUser)
+	_, err := keyring.Get(params.CanonicalName, o.OSUser)
 	if err == nil {
 		return true, nil
 	}
@@ -205,7 +205,7 @@ func (o *Manager) GenerateState(id string, key []byte) (*State, error) {
 	if id == "" {
 		return nil, NewStateError(errors.New("no id provided"))
 	}
-	if len(key) != ignoresync.MasterKeySize {
+	if len(key) != params.MasterKeySize {
 		return nil, NewStateError(errors.New("invalid key length"))
 	}
 	bucket, err := o.generateBucketInfo(infoBucket)
