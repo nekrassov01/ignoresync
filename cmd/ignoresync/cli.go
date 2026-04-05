@@ -345,7 +345,7 @@ func bootstrap(ctx context.Context, cmd *cli.Command) error {
 
 	// Expose credential
 	pref := color.Important(" IMPORTANT ")
-	cred := color.Underline(manager.EncodeCredential(id, key))
+	cred := color.Private(manager.EncodeCredential(id, key))
 	_, _ = fmt.Fprintf(cmd.Writer, "%s store your credential securely: %s\n", pref, cred)
 
 	logger.Info("bootstrap: finished")
@@ -557,7 +557,7 @@ func rotate(ctx context.Context, cmd *cli.Command) error {
 
 	// Expose credential
 	pref := color.Important(" IMPORTANT ")
-	cred := color.Underline(manager.EncodeCredential(id, key))
+	cred := color.Private(manager.EncodeCredential(id, key))
 	warn := color.Warn("rotate successfully, but the object is still encrypted with the old key: rewrap required")
 	_, _ = fmt.Fprintf(cmd.Writer, "%s store your credential securely: %s\n", pref, cred)
 	_, _ = fmt.Fprintln(cmd.Writer, warn)

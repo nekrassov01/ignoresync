@@ -22,5 +22,5 @@ var Mute = color.New(color.FgHiBlack).SprintFunc()
 // Important writes string for important messages.
 var Important = color.New(color.BgRed, color.Bold).SprintFunc()
 
-// Underline writes string for underlined messages.
-var Underline = color.New(color.Underline).SprintFunc()
+// Private writes string for private messages.
+var Private = color.New(color.Underline).SprintFunc()
