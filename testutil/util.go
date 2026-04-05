@@ -14,6 +14,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/nekrassov01/ignoresync/params"
 )
 
 // RepoPath is the path to the test repository used in tests.
@@ -220,7 +222,7 @@ func NewTarGzReader(t *testing.T, name string, mode int64, body []byte) io.Reade
 // CreateTemp creates a temporary file with the given input string for testing.
 func CreateTemp(t *testing.T, input string) *os.File {
 	t.Helper()
-	f, err := os.CreateTemp(t.TempDir(), "ignoresync-test-*")
+	f, err := os.CreateTemp(t.TempDir(), params.DefaultTempPattern)
 	if err != nil {
 		t.Fatal(err)
 	}
