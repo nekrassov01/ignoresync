@@ -217,15 +217,6 @@ func NewTarGzReader(t *testing.T, name string, mode int64, body []byte) io.Reade
 	return bytes.NewReader(buf.Bytes())
 }
 
-// UnsetAWSProfile unsets AWS_PROFILE and AWS_REGION environment variables for testing.
-func UnsetAWSProfile(t *testing.T) {
-	t.Helper()
-	t.Setenv("AWS_PROFILE", "")
-	t.Setenv("AWS_REGION", "")
-	t.Setenv("AWS_DEFAULT_PROFILE", "")
-	t.Setenv("AWS_DEFAULT_REGION", "")
-}
-
 // CreateTemp creates a temporary file with the given input string for testing.
 func CreateTemp(t *testing.T, input string) *os.File {
 	t.Helper()

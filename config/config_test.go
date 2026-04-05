@@ -66,7 +66,6 @@ func TestLoadAWSConfig(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			testutil.UnsetAWSProfile(t)
 			got, err := LoadAWSConfig(test.args.ctx, test.args.profile, test.args.region)
 			testutil.CheckError(t, err != nil, test.want.isError)
 			testutil.CheckValue(t, got.Region, test.want.value.Region)
