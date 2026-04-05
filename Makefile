@@ -1,6 +1,6 @@
 NAME := ignoresync
-PKG := github.com/nekrassov01/ignoresync
 
+PKG := github.com/nekrassov01/$(NAME)
 CMD_PATH := ./cmd/$(NAME)/
 GOBIN ?= $(shell go env GOPATH)/bin
 
@@ -81,7 +81,7 @@ vuln: deps-vuln
 show-version: deps-bump
 	@echo $(shell gobump show -r)
 
-show-revision:
+show-revision: deps-bump
 	@echo $(shell git rev-parse --short HEAD)
 
 check-git:
@@ -97,6 +97,6 @@ publish: check-git deps-bump
 	git commit -am "bump up version to $(VERSION)"
 	git push origin main
 
-release: check-git
+release: check-git deps-bump
 	git tag "v$(VERSION)"
 	git push origin "refs/tags/v$(VERSION)"
