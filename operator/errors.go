@@ -65,15 +65,15 @@ func (k ErrorKind) String() string {
 	case ErrorKindArchive:
 		return "archive error"
 	case ErrorKindEncrypt:
-		return "encrypt error"
+		return "encryption error"
 	case ErrorKindUpload:
 		return "upload error"
 	case ErrorKindDownload:
 		return "download error"
 	case ErrorKindDecrypt:
-		return "decrypt error"
+		return "decryption error"
 	case ErrorKindRestore:
-		return "restore error"
+		return "restoration error"
 	case ErrorKindDelete:
 		return "deletion error"
 	case ErrorKindCleanup:

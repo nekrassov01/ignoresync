@@ -25,7 +25,7 @@ func (k ErrorKind) String() string {
 	case ErrorKindNone:
 		return "no error"
 	case ErrorKindAuth:
-		return "auth error"
+		return "authentication error"
 	case ErrorKindCredential:
 		return "credential error"
 	case ErrorKindState:

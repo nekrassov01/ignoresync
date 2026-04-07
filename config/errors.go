@@ -19,7 +19,7 @@ func (k ErrorKind) String() string {
 	case ErrorKindNone:
 		return "no error"
 	case ErrorKindConfig:
-		return "config error"
+		return "configuration error"
 	default:
 		return "unknown error"
 	}
