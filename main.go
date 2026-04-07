@@ -4,8 +4,8 @@ import (
 	"context"
 	"os"
 
-	"github.com/nekrassov01/ignoresync/cmd"
-	"github.com/nekrassov01/ignoresync/log"
+	"github.com/nekrassov01/ignoresync/internal/cmd"
+	"github.com/nekrassov01/ignoresync/internal/log"
 )
 
 func main() {
