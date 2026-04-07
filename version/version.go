@@ -1,4 +1,4 @@
-package ignoresync
+package version
 
 import "fmt"
 
