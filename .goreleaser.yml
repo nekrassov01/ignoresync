@@ -6,12 +6,12 @@ before:
   hooks:
     - go mod tidy
 builds:
-  - main: ./cmd/ignoresync/
+  - main: .
     binary: ignoresync
     ldflags:
       - -s -w
-      - -X github.com/nekrassov01/ignoresync.version={{ .Version }}
-      - -X github.com/nekrassov01/ignoresync.revision={{ .ShortCommit }}
+      - -X github.com/nekrassov01/ignoresync/internal/version.version={{ .Version }}
+      - -X github.com/nekrassov01/ignoresync/internal/version.revision={{ .ShortCommit }}
     env:
       - CGO_ENABLED=0
     goos:
