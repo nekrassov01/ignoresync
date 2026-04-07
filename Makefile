@@ -1,12 +1,13 @@
 NAME := ignoresync
-PKG := github.com/nekrassov01/ignoresync
 
-CMD_PATH := ./cmd/$(NAME)/
+PKG := github.com/nekrassov01/$(NAME)
+CMD_PATH := .
+VERSION_PATH := internal/version
 GOBIN ?= $(shell go env GOPATH)/bin
 
-VERSION := $$(make show-version)
-REVISION := $$(make show-revision)
-LDFLAGS := "-s -w -X $(PKG).version=$(VERSION) -X $(PKG).revision=$(REVISION)"
+VERSION := $$(make version)
+REVISION := $$(make revision)
+LDFLAGS := "-s -w -X $(PKG)/$(VERSION_PATH).version=$(VERSION) -X $(PKG)/$(VERSION_PATH).revision=$(REVISION)"
 
 HAS_LINT := $(shell command -v $(GOBIN)/golangci-lint 2> /dev/null)
 HAS_VULN := $(shell command -v $(GOBIN)/govulncheck 2> /dev/null)
@@ -18,7 +19,7 @@ BIN_BUMP := github.com/x-motemen/gobump/cmd/gobump@latest
 
 export GO111MODULE=on
 
-.PHONY: deps deps-lint deps-vuln deps-bump clean build check test cover bench lint vuln show-version show-revision check-git publish release
+.PHONY: deps deps-lint deps-vuln deps-bump clean build check test cover bench lint vuln version revision check-git bump
 
 # -------
 #  deps
@@ -75,28 +76,26 @@ vuln: deps-vuln
 	govulncheck -test -show verbose ./...
 
 # ----------
-#  release
+#  version
 # ----------
 
-show-version: deps-bump
-	@echo $(shell gobump show -r)
+version: deps-bump
+	@echo $(shell gobump show -r $(VERSION_PATH))
 
-show-revision:
+revision: deps-bump
 	@echo $(shell git rev-parse --short HEAD)
 
 check-git:
 ifneq ($(shell git status --porcelain),)
 	$(error git workspace is dirty)
 endif
-ifneq ($(shell git rev-parse --abbrev-ref HEAD),main)
-	$(error current branch is not main)
+
+check-branch:
+ifndef branch
+	$(error branch is undefined)
 endif
 
-publish: check-git deps-bump
-	gobump up -w
+bump: check-branch deps-bump
+	gobump up -w $(VERSION_PATH)
 	git commit -am "bump up version to $(VERSION)"
-	git push origin main
-
-release: check-git
-	git tag "v$(VERSION)"
-	git push origin "refs/tags/v$(VERSION)"
+	git push origin $(branch)
