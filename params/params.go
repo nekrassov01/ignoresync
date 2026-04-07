@@ -6,9 +6,6 @@ const (
 
 	// CanonicalName is the canonical name of the application.
 	CanonicalName = "IgnoreSync"
-
-	// LogLabel is the label of the application logger.
-	LogLabel = "IGNORESYNC"
 )
 
 const (
