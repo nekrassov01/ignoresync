@@ -26,7 +26,7 @@ func TestErrorKind_String(t *testing.T) {
 			name: "auth",
 			kind: ErrorKindAuth,
 			want: want{
-				value: "auth error",
+				value: "authentication error",
 			},
 		},
 		{
@@ -72,7 +72,7 @@ func TestError_Error(t *testing.T) {
 				Err:  testutil.NewError(),
 			},
 			want: want{
-				value: "manager: auth error: error",
+				value: "manager: authentication error: error",
 			},
 		},
 		{
@@ -82,7 +82,7 @@ func TestError_Error(t *testing.T) {
 				Err:  nil,
 			},
 			want: want{
-				value: "manager: auth error",
+				value: "manager: authentication error",
 			},
 		},
 	}

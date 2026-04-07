@@ -61,7 +61,7 @@ func TestErrorKind_String(t *testing.T) {
 			name: "encrypt",
 			kind: ErrorKindEncrypt,
 			want: want{
-				value: "encrypt error",
+				value: "encryption error",
 			},
 		},
 		{
@@ -82,14 +82,14 @@ func TestErrorKind_String(t *testing.T) {
 			name: "decrypt",
 			kind: ErrorKindDecrypt,
 			want: want{
-				value: "decrypt error",
+				value: "decryption error",
 			},
 		},
 		{
 			name: "restore",
 			kind: ErrorKindRestore,
 			want: want{
-				value: "restore error",
+				value: "restoration error",
 			},
 		},
 		{

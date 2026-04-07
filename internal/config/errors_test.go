@@ -26,7 +26,7 @@ func TestErrorKind_String(t *testing.T) {
 			name: "config",
 			kind: ErrorKindConfig,
 			want: want{
-				value: "config error",
+				value: "configuration error",
 			},
 		},
 		{
@@ -65,7 +65,7 @@ func TestError_Error(t *testing.T) {
 				Err:  testutil.NewError(),
 			},
 			want: want{
-				value: "config: config error: error",
+				value: "config: configuration error: error",
 			},
 		},
 		{
@@ -75,7 +75,7 @@ func TestError_Error(t *testing.T) {
 				Err:  nil,
 			},
 			want: want{
-				value: "config: config error",
+				value: "config: configuration error",
 			},
 		},
 	}
