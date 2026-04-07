@@ -1,284 +1,48 @@
-package main
+package cmd
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"log/slog"
 	"os"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/nekrassov01/ignoresync"
 	"github.com/nekrassov01/ignoresync/color"
 	"github.com/nekrassov01/ignoresync/config"
 	"github.com/nekrassov01/ignoresync/env"
 	"github.com/nekrassov01/ignoresync/health"
+	"github.com/nekrassov01/ignoresync/log"
 	"github.com/nekrassov01/ignoresync/manager"
 	"github.com/nekrassov01/ignoresync/operator"
 	"github.com/nekrassov01/ignoresync/params"
 	"github.com/nekrassov01/ignoresync/prompt"
-	"github.com/nekrassov01/logger/integrations/awssdk"
-	"github.com/nekrassov01/logger/log"
 	"github.com/urfave/cli/v3"
 )
-
-// logger is a global logger instance used across the application.
-var logger = log.NewLogger(log.NewCLIHandler(io.Discard))
-
-var (
-	// loglevel is the flag for log level.
-	loglevel = &cli.StringFlag{
-		Name:    "log-level",
-		Aliases: []string{"l"},
-		Usage:   "set log level",
-		Sources: cli.EnvVars(params.EnvLogLevel),
-		Value:   slog.LevelInfo.String(),
-	}
-
-	// profile is the flag for AWS profile.
-	profile = &cli.StringFlag{
-		Name:    "profile",
-		Aliases: []string{"p"},
-		Usage:   "set aws profile",
-		Sources: cli.EnvVars(params.EnvAWSProfile),
-	}
-
-	// region is the flag for AWS region.
-	region = &cli.StringFlag{
-		Name:    "region",
-		Aliases: []string{"r"},
-		Usage:   "set aws region",
-		Sources: cli.EnvVars(params.EnvAWSRegion),
-	}
-
-	// remote is the flag for git remote name.
-	remote = &cli.StringFlag{
-		Name:    "remote",
-		Aliases: []string{"R"},
-		Usage:   "set git remote name",
-		Sources: cli.EnvVars(params.EnvRemoteName),
-		Value:   params.DefaultRemoteName,
-	}
-
-	// dryrun is the flag for dry run mode.
-	dryrun = &cli.BoolFlag{
-		Name:    "dry-run",
-		Aliases: []string{"d"},
-		Usage:   "run without processing files",
-	}
-
-	// overwrite is the flag for overwrite mode.
-	overwrite = &cli.BoolFlag{
-		Name:    "overwrite",
-		Aliases: []string{"o"},
-		Usage:   "force overwrite without confirmation",
-	}
-)
-
-// newCmd creates a new CLI command.
-func newCmd(w, ew io.Writer) *cli.Command {
-	return &cli.Command{
-		Name:                  params.CommandName,
-		Version:               ignoresync.Version(),
-		Usage:                 "Your shadow repository for ignored files.",
-		Description:           "Sync files ignored in the repository across machines without configuration.",
-		HideHelpCommand:       true,
-		EnableShellCompletion: true,
-		Writer:                w,
-		ErrWriter:             ew,
-		Metadata:              map[string]any{},
-		Commands: []*cli.Command{
-			{
-				Name:        "bootstrap",
-				Usage:       "Bootstrap the environment.",
-				Description: "Build the AWS resources as environment and activate the local machine at the same.\nThis process creates an S3 bucket and a KMS key in your AWS account, generates an\ncredential tied to your account and region combination, and stores the state derived\nfrom that key in the local keystore.",
-				Category:    categoryGlobal,
-				Before:      before,
-				Action:      bootstrap,
-				Flags:       []cli.Flag{loglevel, profile, region},
-			},
-			{
-				Name:        "check",
-				Usage:       "Check the environment.",
-				Description: "Check if the environment is accessible. If this check is not passed,\nthe environment is not available.",
-				Category:    categoryGlobal,
-				Before:      before,
-				Action:      check,
-				Flags:       []cli.Flag{loglevel, profile, region},
-			},
-			{
-				Name:        "activate",
-				Usage:       "Activate the local machine.",
-				Description: "Activate the local machine using the specified credential.\nPass a known ID to be stored in the local keystore.",
-				Category:    categoryLocal,
-				Before:      before,
-				Action:      activate,
-				Flags:       []cli.Flag{loglevel, profile, region},
-			},
-			{
-				Name:        "deactivate",
-				Usage:       "Deactivate the local machine.",
-				Description: "Deactivate the specified credential for the local machine.\nDelete known ID stored in the local keystore.",
-				Category:    categoryLocal,
-				Before:      before,
-				Action:      deactivate,
-				Flags:       []cli.Flag{loglevel, profile, region},
-			},
-			{
-				Name:        "list",
-				Usage:       "List the key IDs.",
-				Description: "List the key IDs from credentials stored in the local keystore.\nYou can also check whether they are active or not.",
-				Category:    categoryLocal,
-				Before:      before,
-				Action:      list,
-				Flags:       []cli.Flag{loglevel, profile, region},
-			},
-			{
-				Name:        "rotate",
-				Usage:       "Rotate the credential.",
-				Description: "Rotate the credential in the local keystore. This process\ngenerates a new credential and updates the state accordingly.",
-				Category:    categoryLocal,
-				Before:      before,
-				Action:      rotate,
-				Flags:       []cli.Flag{loglevel, profile, region},
-			},
-			{
-				Name:        "leave",
-				Usage:       "Leave the environment.",
-				Description: "Leave the environment by deleting the state. This process\nremoves all the credentials from the local keystore.",
-				Category:    categoryLocal,
-				Before:      before,
-				Action:      leave,
-				Flags:       []cli.Flag{loglevel, profile, region},
-			},
-			{
-				Name:        "push",
-				Usage:       "Push the local files.",
-				Description: "Push the local files to the environment. Bundle the local files into a tar.gz,\nmultiple encrypted on the client side, and uploaded to the environment.",
-				Category:    categoryRepository,
-				Before:      before,
-				Action:      push,
-				Flags:       []cli.Flag{loglevel, profile, region, remote, dryrun},
-			},
-			{
-				Name:        "pull",
-				Usage:       "Pull the remote files.",
-				Description: "Pull the remote files from the environment. The files are decrypted and extracted\nfrom tar.gz to the current directory. If there are differences in the same file,\nit will prompt you to confirm whether to overwrite it.",
-				Category:    categoryRepository,
-				Before:      before,
-				Action:      pull,
-				Flags:       []cli.Flag{loglevel, profile, region, remote, overwrite},
-			},
-			{
-				Name:        "rm",
-				Usage:       "Remove the remote files/patterns.",
-				Description: "Remove the remote files/patterns uploaded to the environment.\nIf the key cannot be retrieved, the deletion will fail.",
-				Category:    categoryRepository,
-				Before:      before,
-				Action:      rm,
-				Flags:       []cli.Flag{loglevel, profile, region, remote},
-			},
-			{
-				Name:        "set",
-				Usage:       "Set the remote patterns.",
-				Description: "Set the remote patterns uploaded to the environment.\nJSON array format is required.",
-				Category:    categoryRepository,
-				Before:      before,
-				Action:      set,
-				Flags:       []cli.Flag{loglevel, profile, region, remote},
-			},
-			{
-				Name:        "preview",
-				Usage:       "Preview the remote files/patterns.",
-				Description: "Preview the remote files/patterns uploaded to the environment.\nThis command does not make any changes to the local files and\nis intended to be used for checking the remote state.",
-				Category:    categoryRepository,
-				Before:      before,
-				Action:      preview,
-				Flags:       []cli.Flag{loglevel, profile, region, remote},
-			},
-			{
-				Name:        "rewrap",
-				Usage:       "Rewrap the remote files/patterns.",
-				Description: "Rewrap the remote files/patterns uploaded to the environment.\nRe-encrypt the existing files/patterns using the new key.",
-				Category:    categoryRepository,
-				Before:      before,
-				Action:      rewrap,
-				Flags:       []cli.Flag{loglevel, profile, region, remote},
-			},
-			{
-				Name:        "clean",
-				Usage:       "Clean up files in the current repository.",
-				Description: "Clean up files in the current repository. This will only delete files\nthat match the remote target pattern in the local repository.",
-				Category:    categoryRepository,
-				Before:      before,
-				Action:      clean,
-				Flags:       []cli.Flag{loglevel, profile, region, remote},
-			},
-			{
-				Name:        "run",
-				Usage:       "Run command with setup and cleanup.",
-				Description: "Run command with setup and cleanup. Pull the files before execution.\nIf the command completes or is aborted, the pulled files are cleaned up.",
-				Category:    categoryRepository,
-				Before:      before,
-				Action:      run,
-				Flags:       []cli.Flag{loglevel, profile, region, remote},
-			},
-		},
-	}
-}
 
 func before(ctx context.Context, cmd *cli.Command) (context.Context, error) {
 	// Snapshot the original environment before any SDK loading
 	cmd.Metadata[keyEnviron] = os.Environ()
 
-	// Parse log level
-	var level slog.Level
-	if err := level.UnmarshalText([]byte(cmd.String(loglevel.Name))); err != nil {
-		level = slog.LevelInfo
+	// Set application logger with the specified log level
+	log.SetAppLogger(cmd.ErrWriter, cmd.String(loglevel.Name))
+
+	// Warn if running in CI mode
+	cred := os.Getenv(params.EnvCredential)
+	if cred != "" {
+		msg := fmt.Sprintf("ci mode: environment variable %q is set: this is not recommended except for CI use", params.EnvCredential)
+		log.Logger.Warn(msg)
 	}
-
-	// Set logger style
-	s := log.Style1()
-	s.Caller.Fullpath = true
-
-	// Create logger for application
-	logger = log.NewLogger(log.NewCLIHandler(
-		cmd.ErrWriter,
-		log.WithLabel(params.LogLabel),
-		log.WithLevel(level),
-		log.WithCaller(level <= slog.LevelDebug),
-		log.WithStyle(s),
-	))
+	cmd.Metadata[keyCredential] = cred
 
 	// Load AWS config with the specified profile and region
 	cfg, err := config.LoadAWSConfig(ctx, cmd.String(profile.Name), cmd.String(region.Name))
 	if err != nil {
 		return nil, err
 	}
-
-	// Create logger for AWS SDK
-	cfg.Logger = awssdk.NewLogger(log.NewCLIHandler(
-		cmd.ErrWriter,
-		log.WithLabel("SDK"),
-		log.WithLevel(level),
-		log.WithCaller(level <= slog.LevelDebug),
-		log.WithStyle(s),
-	))
-	cfg.ClientLogMode = aws.LogRequest | aws.LogResponse | aws.LogRetries | aws.LogSigning | aws.LogDeprecatedUsage
-
-	// Warn if running in CI mode
-	cred := os.Getenv(params.EnvCredential)
-	if cred != "" {
-		msg := fmt.Sprintf("ci mode: environment variable %q is set: this is not recommended except for CI use", params.EnvCredential)
-		logger.Warn(msg)
-	}
-
-	// Set metadata for commands
+	log.SetSDKLogger(cmd.ErrWriter, cmd.String(loglevel.Name), &cfg)
 	cmd.Metadata[keyConfig] = cfg
-	cmd.Metadata[keyCredential] = cred
 
 	return ctx, nil
 }
@@ -286,10 +50,10 @@ func before(ctx context.Context, cmd *cli.Command) (context.Context, error) {
 func bootstrap(ctx context.Context, cmd *cli.Command) error {
 	// Check if running in CI mode
 	if cmd.Metadata[keyCredential].(string) != "" {
-		logger.Warn("ci mode: skip bootstrapping")
+		log.Logger.Warn("ci mode: skip bootstrapping")
 		return nil
 	}
-	logger.Info("bootstrap: starting")
+	log.Logger.Info("bootstrap: starting")
 
 	// Load AWS config
 	cfg := cmd.Metadata[keyConfig].(aws.Config)
@@ -307,7 +71,7 @@ func bootstrap(ctx context.Context, cmd *cli.Command) error {
 	}
 	if exist {
 		msg := "skip bootstrapping: state already exists in the keyring"
-		logger.Warn(msg)
+		log.Logger.Warn(msg)
 		return nil
 	}
 
@@ -348,12 +112,12 @@ func bootstrap(ctx context.Context, cmd *cli.Command) error {
 	cred := color.Private(manager.EncodeCredential(id, key))
 	_, _ = fmt.Fprintf(cmd.Writer, "%s store your credential securely: %s\n", pref, cred)
 
-	logger.Info("bootstrap: finished")
+	log.Logger.Info("bootstrap: finished")
 	return nil
 }
 
 func check(ctx context.Context, cmd *cli.Command) error {
-	logger.Info("check: starting")
+	log.Logger.Info("check: starting")
 
 	// Load AWS config
 	cfg := cmd.Metadata[keyConfig].(aws.Config)
@@ -381,17 +145,17 @@ func check(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	logger.Info("check: finished")
+	log.Logger.Info("check: finished")
 	return nil
 }
 
 func activate(ctx context.Context, cmd *cli.Command) error {
 	// Check if running in CI mode
 	if cmd.Metadata[keyCredential].(string) != "" {
-		logger.Warn("ci mode: skip activation")
+		log.Logger.Warn("ci mode: skip activation")
 		return nil
 	}
-	logger.Info("activate: starting")
+	log.Logger.Info("activate: starting")
 
 	// Load AWS config
 	cfg := cmd.Metadata[keyConfig].(aws.Config)
@@ -423,7 +187,7 @@ func activate(ctx context.Context, cmd *cli.Command) error {
 		if err := man.AddCredential(id, key); err != nil {
 			return err
 		}
-		logger.Info("activate: finished")
+		log.Logger.Info("activate: finished")
 		return nil
 	}
 
@@ -451,17 +215,17 @@ func activate(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	logger.Info("activate: finished")
+	log.Logger.Info("activate: finished")
 	return nil
 }
 
 func deactivate(ctx context.Context, cmd *cli.Command) error {
 	// Check if running in CI mode
 	if cmd.Metadata[keyCredential].(string) != "" {
-		logger.Warn("ci mode: skip deactivation")
+		log.Logger.Warn("ci mode: skip deactivation")
 		return nil
 	}
-	logger.Info("deactivate: starting")
+	log.Logger.Info("deactivate: starting")
 
 	// Load AWS config
 	cfg := cmd.Metadata[keyConfig].(aws.Config)
@@ -489,17 +253,17 @@ func deactivate(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	logger.Info("deactivate: finished")
+	log.Logger.Info("deactivate: finished")
 	return nil
 }
 
 func list(ctx context.Context, cmd *cli.Command) error {
 	// Check if running in CI mode
 	if cmd.Metadata[keyCredential].(string) != "" {
-		logger.Warn("ci mode: skip getting key IDs")
+		log.Logger.Warn("ci mode: skip getting key IDs")
 		return nil
 	}
-	logger.Info("list: starting")
+	log.Logger.Info("list: starting")
 
 	// Load AWS config
 	cfg := cmd.Metadata[keyConfig].(aws.Config)
@@ -523,17 +287,17 @@ func list(ctx context.Context, cmd *cli.Command) error {
 	}
 	_, _ = fmt.Fprintln(cmd.Writer, string(v))
 
-	logger.Info("list: finished")
+	log.Logger.Info("list: finished")
 	return nil
 }
 
 func rotate(ctx context.Context, cmd *cli.Command) error {
 	// Check if running in CI mode
 	if cmd.Metadata[keyCredential].(string) != "" {
-		logger.Warn("ci mode: skip rotation")
+		log.Logger.Warn("ci mode: skip rotation")
 		return nil
 	}
-	logger.Info("rotate: starting")
+	log.Logger.Info("rotate: starting")
 
 	// Load AWS config
 	cfg := cmd.Metadata[keyConfig].(aws.Config)
@@ -562,17 +326,17 @@ func rotate(ctx context.Context, cmd *cli.Command) error {
 	_, _ = fmt.Fprintf(cmd.Writer, "%s store your credential securely: %s\n", pref, cred)
 	_, _ = fmt.Fprintln(cmd.Writer, warn)
 
-	logger.Info("rotate: finished")
+	log.Logger.Info("rotate: finished")
 	return nil
 }
 
 func leave(ctx context.Context, cmd *cli.Command) error {
 	// Check if running in CI mode
 	if cmd.Metadata[keyCredential].(string) != "" {
-		logger.Warn("ci mode: skip leaving environment")
+		log.Logger.Warn("ci mode: skip leaving environment")
 		return nil
 	}
-	logger.Info("leave: starting")
+	log.Logger.Info("leave: starting")
 
 	// Load AWS config
 	cfg := cmd.Metadata[keyConfig].(aws.Config)
@@ -588,12 +352,12 @@ func leave(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	logger.Info("leave: finished")
+	log.Logger.Info("leave: finished")
 	return nil
 }
 
 func push(ctx context.Context, cmd *cli.Command) error {
-	logger.Info("push: starting")
+	log.Logger.Info("push: starting")
 
 	// Create operator and load state
 	state, o, err := newOperator(ctx, cmd)
@@ -616,12 +380,12 @@ func push(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	logger.Info("push: finished")
+	log.Logger.Info("push: finished")
 	return nil
 }
 
 func pull(ctx context.Context, cmd *cli.Command) error {
-	logger.Info("pull: starting")
+	log.Logger.Info("pull: starting")
 
 	// Create operator and load state
 	state, o, err := newOperator(ctx, cmd)
@@ -644,12 +408,12 @@ func pull(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	logger.Info("pull: finished")
+	log.Logger.Info("pull: finished")
 	return nil
 }
 
 func rm(ctx context.Context, cmd *cli.Command) error {
-	logger.Info("rm: starting")
+	log.Logger.Info("rm: starting")
 
 	// Create operator and load state
 	state, o, err := newOperator(ctx, cmd)
@@ -662,12 +426,12 @@ func rm(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	logger.Info("rm: finished")
+	log.Logger.Info("rm: finished")
 	return nil
 }
 
 func set(ctx context.Context, cmd *cli.Command) error {
-	logger.Info("set: starting")
+	log.Logger.Info("set: starting")
 
 	// Get command arguments
 	arg := cmd.Args().Get(0)
@@ -695,12 +459,12 @@ func set(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	logger.Info("set: finished")
+	log.Logger.Info("set: finished")
 	return nil
 }
 
 func preview(ctx context.Context, cmd *cli.Command) error {
-	logger.Info("preview: starting")
+	log.Logger.Info("preview: starting")
 
 	// Create operator and load state
 	state, o, err := newOperator(ctx, cmd)
@@ -721,12 +485,12 @@ func preview(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	logger.Info("preview: finished")
+	log.Logger.Info("preview: finished")
 	return nil
 }
 
 func rewrap(ctx context.Context, cmd *cli.Command) error {
-	logger.Info("rewrap: starting")
+	log.Logger.Info("rewrap: starting")
 
 	// Create operator and load state
 	state, o, err := newOperator(ctx, cmd)
@@ -739,12 +503,12 @@ func rewrap(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	logger.Info("rewrap: finished")
+	log.Logger.Info("rewrap: finished")
 	return nil
 }
 
 func clean(ctx context.Context, cmd *cli.Command) error {
-	logger.Info("clean: starting")
+	log.Logger.Info("clean: starting")
 
 	// Create operator and load state
 	state, o, err := newOperator(ctx, cmd)
@@ -766,12 +530,12 @@ func clean(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	logger.Info("clean: finished")
+	log.Logger.Info("clean: finished")
 	return nil
 }
 
 func run(ctx context.Context, cmd *cli.Command) error {
-	logger.Info("run: starting")
+	log.Logger.Info("run: starting")
 
 	// Get command arguments
 	args := cmd.Args().Slice()
@@ -804,7 +568,7 @@ func run(ctx context.Context, cmd *cli.Command) error {
 	// Ensure cleanup runs on normal exit, error, or signal
 	defer func() {
 		_ = o.CleanupFiles()
-		logger.Info("run: finished")
+		log.Logger.Info("run: finished")
 	}()
 
 	// Execute command
@@ -855,7 +619,7 @@ func shouldOverwrite(cmd *cli.Command) bool {
 		return true
 	}
 	if cred := cmd.Metadata[keyCredential].(string); cred != "" {
-		logger.Warn("ci mode: force overwrite enabled")
+		log.Logger.Warn("ci mode: force overwrite enabled")
 		return true
 	}
 	return false
