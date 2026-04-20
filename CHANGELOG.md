@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.1.1](https://github.com/nekrassov01/ignoresync/compare/v0.1.0...v0.1.1) - 2026-04-20
+- Update for common settings for gh-infra by @nekrassov01 in https://github.com/nekrassov01/ignoresync/pull/14
+
 ## [v0.1.0](https://github.com/nekrassov01/ignoresync/compare/v0.0.6...v0.1.0) - 2026-04-07
 - Release for v0.1.0 by @nekrassov01 in https://github.com/nekrassov01/ignoresync/pull/9
 
